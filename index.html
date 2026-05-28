@@ -155,6 +155,13 @@ input:focus,select:focus{border-color:var(--forest)}
 .color-picker-row{display:flex;align-items:center;gap:8px}
 .color-picker-row input[type="color"]{width:36px;height:32px;padding:2px;border:1px solid var(--cream-dark);border-radius:var(--radius-sm);cursor:pointer;background:var(--white)}
 .color-picker-row input[type="text"]{flex:1;font-size:11px;font-family:'Montserrat',monospace}
+/* edit modal */
+#edit-modal.open{display:flex!important}
+.edit-field{display:flex;flex-direction:column;gap:5px;margin-bottom:13px}
+.edit-field label{font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink-soft);font-weight:600}
+.edit-field input,.edit-field select{padding:8px 11px;border:1px solid var(--cream-dark);border-radius:var(--radius-sm);font-size:12px;background:var(--white);color:var(--ink);font-family:'Montserrat',sans-serif;width:100%;outline:none}
+.edit-field input:focus,.edit-field select:focus{border-color:var(--forest)}
+.edit-two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 @media(max-width:768px){
   .sidebar{width:54px}
   .brand-eyebrow,.brand-name,.brand-sub,.nav-section-label,.nav-item span,.sidebar-footer span{display:none}
@@ -578,6 +585,21 @@ input:focus,select:focus{border-color:var(--forest)}
     </div>
   </div>
 
+<!-- EDIT MODAL -->
+<div id="edit-modal" style="display:none;position:fixed;inset:0;z-index:999;background:rgba(0,0,0,0.45);display:none;align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--white);border-radius:var(--radius);padding:26px 28px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div style="font-family:'Libre Baskerville',serif;font-size:17px;font-weight:700;color:var(--ink)" id="edit-modal-title">Edit</div>
+      <button onclick="closeEdit()" style="background:transparent;border:none;cursor:pointer;font-size:18px;color:var(--ink-muted);padding:2px 6px">&#x2715;</button>
+    </div>
+    <div id="edit-modal-body"></div>
+    <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeEdit()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEdit()">Save changes</button>
+    </div>
+  </div>
+</div>
+
 </main>
 <script>
 // ── STORAGE ──────────────────────────────────────────────────────────
@@ -772,7 +794,7 @@ function renderClients(filter){
   filter=filter||'';
   var rows=filter?clients.filter(function(c){return c.name.toLowerCase().indexOf(filter.toLowerCase())>-1||c.service.toLowerCase().indexOf(filter.toLowerCase())>-1;}):clients;
   document.getElementById('client-table').innerHTML=rows.length
-    ?rows.map(function(c){var idx=clients.indexOf(c);return'<tr><td>'+c.name+'</td><td>'+c.service+'</td><td>'+c.date+'</td><td style="font-weight:600">'+fmtD(c.amount)+'</td><td>'+(c.tip>0?'<span class="tip-dot"></span>'+fmtD(c.tip):'—')+'</td><td style="color:var(--ink-muted)">'+(c.notes||'—')+'</td><td><button class="btn-icon" onclick="deleteClient('+idx+')">&#x2715;</button></td></tr>';}).join('')
+    ?rows.map(function(c){var idx=clients.indexOf(c);return'<tr><td>'+c.name+'</td><td>'+c.service+'</td><td>'+c.date+'</td><td style="font-weight:600">'+fmtD(c.amount)+'</td><td>'+(c.tip>0?'<span class="tip-dot"></span>'+fmtD(c.tip):'—')+'</td><td style="color:var(--ink-muted)">'+(c.notes||'—')+'</td><td style="display:flex;gap:5px"><button class="btn-icon btn-save" style="font-size:10px;padding:3px 7px" onclick="openEdit(\'clients\','+idx+')">Edit</button><button class="btn-icon" onclick="deleteClient('+idx+')">&#x2715;</button></td></tr>';}).join('')
     :'<tr><td colspan="7" class="empty">No clients yet</td></tr>';
 }
 function filterClients(v){renderClients(v);}
@@ -801,7 +823,7 @@ function renderTips(){
     '<div class="metric-card"><div class="m-label">Times Tipped</div><div class="m-val">'+tips.length+'</div></div>';
   var sorted=[].concat(tips).sort(function(a,b){return b.date.localeCompare(a.date);});
   document.getElementById('tip-table').innerHTML=sorted.length
-    ?sorted.map(function(t){var idx=tips.indexOf(t);return'<tr><td>'+t.date+'</td><td>'+t.name+'</td><td style="font-weight:600">'+fmtD(t.amount)+'</td><td style="color:var(--ink-muted)">'+(t.notes||'—')+'</td><td><button class="btn-icon" onclick="tips.splice('+idx+',1);persist();renderTips()">&#x2715;</button></td></tr>';}).join('')
+    ?sorted.map(function(t){var idx=tips.indexOf(t);return'<tr><td>'+t.date+'</td><td>'+t.name+'</td><td style="font-weight:600">'+fmtD(t.amount)+'</td><td style="color:var(--ink-muted)">'+(t.notes||'—')+'</td><td style="display:flex;gap:5px"><button class="btn-icon btn-save" style="font-size:10px;padding:3px 7px" onclick="openEdit(\'tips\','+idx+')">Edit</button><button class="btn-icon" onclick="tips.splice('+idx+',1);persist();renderTips()">&#x2715;</button></td></tr>';}).join('')
     :'<tr><td colspan="5" class="empty">No tips logged yet</td></tr>';
 }
 function addTip(){
@@ -824,7 +846,7 @@ function renderEdu(){
     '<div class="metric-card"><div class="m-label">Total Seats/Units</div><div class="m-val">'+tS+'</div></div>';
   var sorted=[].concat(eduEvents).sort(function(a,b){return b.date.localeCompare(a.date);});
   document.getElementById('edu-table').innerHTML=sorted.length
-    ?sorted.map(function(e){var idx=eduEvents.indexOf(e);var net=Number(e.revenue)-Number(e.expenses);return'<tr><td>'+e.date+'</td><td style="font-weight:500">'+e.name+'</td><td><span class="badge badge-ink">'+e.type+'</span></td><td>'+e.seats+'</td><td style="font-weight:600">'+fmtD(e.revenue)+'</td><td style="color:#8b4343">'+fmtD(e.expenses)+'</td><td style="font-weight:600">'+(net>=0?fmtD(net):'<span style="color:#8b4343">-'+fmtD(Math.abs(net))+'</span>')+'</td><td><button class="btn-icon" onclick="eduEvents.splice('+idx+',1);persist();renderEdu()">&#x2715;</button></td></tr>';}).join('')
+    ?sorted.map(function(e){var idx=eduEvents.indexOf(e);var net=Number(e.revenue)-Number(e.expenses);return'<tr><td>'+e.date+'</td><td style="font-weight:500">'+e.name+'</td><td><span class="badge badge-ink">'+e.type+'</span></td><td>'+e.seats+'</td><td style="font-weight:600">'+fmtD(e.revenue)+'</td><td style="color:#8b4343">'+fmtD(e.expenses)+'</td><td style="font-weight:600">'+(net>=0?fmtD(net):'<span style="color:#8b4343">-'+fmtD(Math.abs(net))+'</span>')+'</td><td style="display:flex;gap:5px"><button class="btn-icon btn-save" style="font-size:10px;padding:3px 7px" onclick="openEdit(\'eduEvents\','+idx+')">Edit</button><button class="btn-icon" onclick="eduEvents.splice('+idx+',1);persist();renderEdu()">&#x2715;</button></td></tr>';}).join('')
     :'<tr><td colspan="8" class="empty">No events logged yet</td></tr>';
 }
 function addEdu(){
@@ -850,7 +872,7 @@ function renderExpenses(){
     '<div class="metric-card"><div class="m-label">Top Category</div><div class="m-val" style="font-size:13px;padding-top:3px">'+top+'</div></div>';
   var sorted=[].concat(expenses).sort(function(a,b){return b.date.localeCompare(a.date);});
   document.getElementById('exp-table').innerHTML=sorted.length
-    ?sorted.map(function(e){var idx=expenses.indexOf(e);var db=e.deduct==='yes'?'badge-green':e.deduct==='partial'?'badge-amber':'badge-red';return'<tr><td>'+e.date+'</td><td>'+e.desc+'</td><td>'+e.cat+'</td><td><span class="badge '+db+'">'+e.deduct+'</span></td><td style="font-weight:600;color:#8b4343">- '+fmtD(e.amount)+'</td><td><button class="btn-icon" onclick="expenses.splice('+idx+',1);persist();renderExpenses()">&#x2715;</button></td></tr>';}).join('')
+    ?sorted.map(function(e){var idx=expenses.indexOf(e);var db=e.deduct==='yes'?'badge-green':e.deduct==='partial'?'badge-amber':'badge-red';return'<tr><td>'+e.date+'</td><td>'+e.desc+'</td><td>'+e.cat+'</td><td><span class="badge '+db+'">'+e.deduct+'</span></td><td style="font-weight:600;color:#8b4343">- '+fmtD(e.amount)+'</td><td style="display:flex;gap:5px"><button class="btn-icon btn-save" style="font-size:10px;padding:3px 7px" onclick="openEdit(\'expenses\','+idx+')">Edit</button><button class="btn-icon" onclick="expenses.splice('+idx+',1);persist();renderExpenses()">&#x2715;</button></td></tr>';}).join('')
     :'<tr><td colspan="6" class="empty">No expenses yet — start logging to maximize deductions</td></tr>';
 }
 function addExpense(){
@@ -892,7 +914,7 @@ function renderBudget(){
     '<div class="metric-card accent"><div class="m-label">Net Profit</div><div class="m-val">'+fmtD(t.net)+'</div></div>';
   var sorted=[].concat(transactions).sort(function(a,b){return b.date.localeCompare(a.date);});
   document.getElementById('budget-table').innerHTML=sorted.length
-    ?sorted.map(function(tr){var idx=transactions.indexOf(tr);return'<tr><td>'+tr.date+'</td><td style="max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+tr.desc+'</td><td>'+tr.cat+'</td><td><span class="badge '+(tr.type==='income'?'badge-green':'badge-red')+'">'+tr.type+'</span></td><td style="font-weight:600;color:'+(tr.type==='income'?'var(--ink)':'#8b4343')+'">'+(tr.type==='expense'?'- ':'')+fmtD(tr.amount)+'</td><td><button class="btn-icon" onclick="transactions.splice('+idx+',1);persist();renderBudget()">&#x2715;</button></td></tr>';}).join('')
+    ?sorted.map(function(tr){var idx=transactions.indexOf(tr);return'<tr><td>'+tr.date+'</td><td style="max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+tr.desc+'</td><td>'+tr.cat+'</td><td><span class="badge '+(tr.type==='income'?'badge-green':'badge-red')+'">'+tr.type+'</span></td><td style="font-weight:600;color:'+(tr.type==='income'?'var(--ink)':'#8b4343')+'">'+(tr.type==='expense'?'- ':'')+fmtD(tr.amount)+'</td><td style="display:flex;gap:5px"><button class="btn-icon btn-save" style="font-size:10px;padding:3px 7px" onclick="openEdit(\'transactions\','+idx+')">Edit</button><button class="btn-icon" onclick="transactions.splice('+idx+',1);persist();renderBudget()">&#x2715;</button></td></tr>';}).join('')
     :'<tr><td colspan="6" class="empty">No transactions yet</td></tr>';
 }
 function addTransaction(){
@@ -984,6 +1006,109 @@ function exportCSV(type){
         [].concat(transactions).sort(function(a,b){return b.date.localeCompare(a.date);}).map(function(t){return[t.date,t.desc,t.cat,t.type,t.amount];})));
   }
 }
+
+// ── EDIT MODAL ────────────────────────────────────────────────────────
+var _editState={type:null,idx:null};
+
+function openEdit(type,idx){
+  _editState={type:type,idx:idx};
+  var m=document.getElementById('edit-modal');
+  var title=document.getElementById('edit-modal-title');
+  var body=document.getElementById('edit-modal-body');
+  var item;
+  if(type==='clients'){item=clients[idx];title.textContent='Edit client';
+    body.innerHTML=
+      '<div class="edit-two"><div class="edit-field"><label>Client name</label><input id="ef-name" value="'+esc(item.name)+'"></div>'+
+      '<div class="edit-field"><label>Service</label><select id="ef-service">'+cats.services.map(function(s){return'<option value="'+s+'"'+(s===item.service?' selected':'')+'>'+s+'</option>';}).join('')+'</select></div></div>'+
+      '<div class="edit-two"><div class="edit-field"><label>Amount ($)</label><input id="ef-amount" type="number" value="'+item.amount+'"></div>'+
+      '<div class="edit-field"><label>Tip ($)</label><input id="ef-tip" type="number" value="'+(item.tip||0)+'"></div></div>'+
+      '<div class="edit-field"><label>Date</label><input id="ef-date" type="date" value="'+item.date+'"></div>'+
+      '<div class="edit-field"><label>Notes</label><input id="ef-notes" value="'+esc(item.notes||'')+'"></div>';
+  } else if(type==='tips'){item=tips[idx];title.textContent='Edit tip';
+    body.innerHTML=
+      '<div class="edit-two"><div class="edit-field"><label>Client name</label><input id="ef-name" value="'+esc(item.name)+'"></div>'+
+      '<div class="edit-field"><label>Amount ($)</label><input id="ef-amount" type="number" value="'+item.amount+'"></div></div>'+
+      '<div class="edit-field"><label>Date</label><input id="ef-date" type="date" value="'+item.date+'"></div>'+
+      '<div class="edit-field"><label>Notes</label><input id="ef-notes" value="'+esc(item.notes||'')+'"></div>';
+  } else if(type==='expenses'){item=expenses[idx];title.textContent='Edit expense';
+    var expCats=['Supplies & products','Continuing education','Marketing & advertising','Software & subscriptions','Rent & utilities','Insurance','Equipment & tools','Mileage & travel','Phone & internet','Professional services','Trade shows & events','Uniforms & clothing','Meals & entertainment','Licensing & permits','Other'];
+    body.innerHTML=
+      '<div class="edit-field"><label>Description</label><input id="ef-desc" value="'+esc(item.desc)+'"></div>'+
+      '<div class="edit-two"><div class="edit-field"><label>Category</label><select id="ef-cat">'+expCats.map(function(c){return'<option'+(c===item.cat?' selected':'')+'>'+c+'</option>';}).join('')+'</select></div>'+
+      '<div class="edit-field"><label>Tax deductible?</label><select id="ef-deduct"><option value="yes"'+(item.deduct==='yes'?' selected':'')+'>Yes</option><option value="no"'+(item.deduct==='no'?' selected':'')+'>No</option><option value="partial"'+(item.deduct==='partial'?' selected':'')+'>Partial</option></select></div></div>'+
+      '<div class="edit-two"><div class="edit-field"><label>Amount ($)</label><input id="ef-amount" type="number" value="'+item.amount+'"></div>'+
+      '<div class="edit-field"><label>Date</label><input id="ef-date" type="date" value="'+item.date+'"></div></div>'+
+      '<div class="edit-field"><label>Notes</label><input id="ef-notes" value="'+esc(item.notes||'')+'"></div>';
+  } else if(type==='eduEvents'){item=eduEvents[idx];title.textContent='Edit event';
+    var eduTypes=['In-person training','Online course','1-on-1 mentoring','Digital product sale','Speaking / feature','Other'];
+    body.innerHTML=
+      '<div class="edit-field"><label>Event name</label><input id="ef-name" value="'+esc(item.name)+'"></div>'+
+      '<div class="edit-two"><div class="edit-field"><label>Type</label><select id="ef-type">'+eduTypes.map(function(t){return'<option'+(t===item.type?' selected':'')+'>'+t+'</option>';}).join('')+'</select></div>'+
+      '<div class="edit-field"><label>Date</label><input id="ef-date" type="date" value="'+item.date+'"></div></div>'+
+      '<div class="edit-two"><div class="edit-field"><label>Revenue ($)</label><input id="ef-revenue" type="number" value="'+item.revenue+'"></div>'+
+      '<div class="edit-field"><label>Expenses ($)</label><input id="ef-expenses" type="number" value="'+item.expenses+'"></div></div>'+
+      '<div class="edit-two"><div class="edit-field"><label>Seats / units</label><input id="ef-seats" type="number" value="'+item.seats+'"></div>'+
+      '<div class="edit-field"><label>Notes</label><input id="ef-notes" value="'+esc(item.notes||'')+'"></div></div>';
+  } else if(type==='transactions'){item=transactions[idx];title.textContent='Edit transaction';
+    body.innerHTML=
+      '<div class="edit-field"><label>Description</label><input id="ef-desc" value="'+esc(item.desc)+'"></div>'+
+      '<div class="edit-two"><div class="edit-field"><label>Type</label><select id="ef-type"><option value="income"'+(item.type==='income'?' selected':'')+'>Income</option><option value="expense"'+(item.type==='expense'?' selected':'')+'>Expense</option></select></div>'+
+      '<div class="edit-field"><label>Category</label><select id="ef-cat">'+cats.budCats.map(function(c){return'<option'+(c===item.cat?' selected':'')+'>'+c+'</option>';}).join('')+'</select></div></div>'+
+      '<div class="edit-two"><div class="edit-field"><label>Amount ($)</label><input id="ef-amount" type="number" value="'+item.amount+'"></div>'+
+      '<div class="edit-field"><label>Date</label><input id="ef-date" type="date" value="'+item.date+'"></div></div>';
+  }
+  m.classList.add('open');
+  m.style.display='flex';
+}
+
+function closeEdit(){
+  var m=document.getElementById('edit-modal');
+  m.classList.remove('open');
+  m.style.display='none';
+  _editState={type:null,idx:null};
+}
+
+function esc(s){return String(s||'').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+
+function gv(id){var el=document.getElementById(id);return el?el.value:'';}
+
+function saveEdit(){
+  var type=_editState.type,idx=_editState.idx;
+  if(type===null||idx===null)return;
+  if(type==='clients'){
+    clients[idx].name=gv('ef-name');clients[idx].service=gv('ef-service');
+    clients[idx].amount=Number(gv('ef-amount'));clients[idx].tip=Number(gv('ef-tip')||0);
+    clients[idx].date=gv('ef-date');clients[idx].notes=gv('ef-notes');
+    persist();closeEdit();renderClients();
+  } else if(type==='tips'){
+    tips[idx].name=gv('ef-name');tips[idx].amount=Number(gv('ef-amount'));
+    tips[idx].date=gv('ef-date');tips[idx].notes=gv('ef-notes');
+    persist();closeEdit();renderTips();
+  } else if(type==='expenses'){
+    expenses[idx].desc=gv('ef-desc');expenses[idx].cat=gv('ef-cat');
+    expenses[idx].deduct=gv('ef-deduct');expenses[idx].amount=Number(gv('ef-amount'));
+    expenses[idx].date=gv('ef-date');expenses[idx].notes=gv('ef-notes');
+    persist();closeEdit();renderExpenses();
+  } else if(type==='eduEvents'){
+    eduEvents[idx].name=gv('ef-name');eduEvents[idx].type=gv('ef-type');
+    eduEvents[idx].date=gv('ef-date');eduEvents[idx].revenue=Number(gv('ef-revenue'));
+    eduEvents[idx].expenses=Number(gv('ef-expenses'));eduEvents[idx].seats=Number(gv('ef-seats'));
+    eduEvents[idx].notes=gv('ef-notes');
+    persist();closeEdit();renderEdu();
+  } else if(type==='transactions'){
+    transactions[idx].desc=gv('ef-desc');transactions[idx].type=gv('ef-type');
+    transactions[idx].cat=gv('ef-cat');transactions[idx].amount=Number(gv('ef-amount'));
+    transactions[idx].date=gv('ef-date');
+    persist();closeEdit();renderBudget();
+  }
+  showToast('Changes saved!');
+}
+
+// close modal on backdrop click
+document.addEventListener('click',function(e){
+  var m=document.getElementById('edit-modal');
+  if(e.target===m)closeEdit();
+});
 
 // ── BACKUP & SYNC ─────────────────────────────────────────────────────
 function exportAllData(){
