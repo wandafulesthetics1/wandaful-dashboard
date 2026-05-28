@@ -228,6 +228,10 @@ input:focus,select:focus{border-color:var(--forest)}
       <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 12h8M12 8v8"/></svg>
       <span>Square Import</span>
     </button>
+    <button class="nav-item" onclick="showPage('wellsfargo',this)">
+      <svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="6" y1="15" x2="10" y2="15"/></svg>
+      <span>Wells Fargo Import</span>
+    </button>
     <button class="nav-item" onclick="showPage('settings',this)">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       <span>Settings</span>
@@ -566,6 +570,71 @@ input:focus,select:focus{border-color:var(--forest)}
     </div>
   </div>
 
+  <!-- WELLS FARGO IMPORT -->
+  <div id="page-wellsfargo" class="page">
+    <div class="page-header"><h1>Wells Fargo Import</h1><p>Export your bank transactions, drop the CSV here, and check off only your business expenses.</p></div>
+
+    <div class="card" style="margin-bottom:18px">
+      <div class="card-header"><div class="card-title">How to export from Wells Fargo</div></div>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-text">Go to <strong>wellsfargo.com</strong> → sign in → click your checking account</div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-text">Click <strong>Download Account Activity</strong> (above your transactions list)</div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-text">Select your date range and choose <strong>Comma-Separated Values (CSV)</strong></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-text">Save the file and drop it below — then check only your business expenses</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div class="card-title">Import CSV</div></div>
+      <p style="font-size:11px;color:var(--ink-muted);margin-bottom:14px;line-height:1.7">Since this is a personal account, <strong>only check the rows that are business expenses.</strong> Uncheck everything personal — groceries, restaurants, etc. Only checked rows get imported.</p>
+
+      <div id="wf-dropzone" style="border:2px dashed var(--cream-dark);border-radius:var(--radius);padding:40px 24px;text-align:center;cursor:pointer;transition:all 0.2s;margin-bottom:16px" onclick="document.getElementById('wf-file').click()" ondragover="wfDragOver(event)" ondragleave="wfDragLeave(event)" ondrop="wfDrop(event)">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--ink-muted);margin-bottom:10px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <div style="font-size:13px;font-weight:500;color:var(--ink);margin-bottom:4px">Drop your Wells Fargo CSV here</div>
+        <div style="font-size:11px;color:var(--ink-muted)">or click to browse</div>
+        <input type="file" id="wf-file" accept=".csv" style="display:none" onchange="wfFileSelected(this)">
+      </div>
+
+      <div id="wf-preview" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+          <div style="font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-muted);font-weight:600">Preview — check only business expenses</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-ghost" style="font-size:10px;padding:4px 10px" onclick="wfSelectAll(true)">Select all</button>
+            <button class="btn btn-ghost" style="font-size:10px;padding:4px 10px" onclick="wfSelectAll(false)">Deselect all</button>
+          </div>
+        </div>
+
+        <!-- quick filter -->
+        <div style="margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <input id="wf-search" placeholder="Filter by name..." style="max-width:200px;font-size:11px" oninput="wfFilter(this.value)">
+          <select id="wf-type-filter" style="max-width:160px;font-size:11px" onchange="wfFilter(document.getElementById('wf-search').value)">
+            <option value="all">All transactions</option>
+            <option value="expense">Expenses only</option>
+            <option value="income">Income only</option>
+          </select>
+        </div>
+
+        <div id="wf-summary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:14px"></div>
+        <div style="max-height:340px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:14px">
+          <table style="font-size:11px">
+            <thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Type</th><th>Category</th><th>Include?</th></tr></thead>
+            <tbody id="wf-preview-rows"></tbody>
+          </table>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="wfImport()">Import selected rows</button>
+          <button class="btn btn-ghost" onclick="wfCancel()">Cancel</button>
+          <span style="font-size:11px;color:var(--ink-muted)" id="wf-count-label"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div class="card-title">Import history</div></div>
+      <div id="wf-history"></div>
+    </div>
+  </div>
+
   <!-- BOOKING -->
   <div id="page-booking" class="page">
     <div class="page-header"><h1>Booking</h1><p>Your Acuity scheduling — connected to your dashboard.</p></div>
@@ -719,7 +788,7 @@ function showPage(id,el){
   document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active');});
   document.getElementById('page-'+id).classList.add('active');
   if(el)el.classList.add('active');
-  var r={dashboard:renderDash,analytics:renderAnalytics,goals:renderGoals,clients:renderClients,tips:renderTips,education:renderEdu,expenses:renderExpenses,inventory:renderInv,budget:renderBudget,square:renderSquare,settings:renderSettings};
+  var r={dashboard:renderDash,analytics:renderAnalytics,goals:renderGoals,clients:renderClients,tips:renderTips,education:renderEdu,expenses:renderExpenses,inventory:renderInv,budget:renderBudget,square:renderSquare,wellsfargo:renderWellsFargo,settings:renderSettings};
   if(r[id])r[id]();
 }
 
@@ -1319,6 +1388,179 @@ function renderSqHistory(){
   '</tbody></table>';
 }
 
+// ── WELLS FARGO CSV IMPORT ───────────────────────────────────────────
+var wfParsed=[];
+var wfImportHistory=load('wfImportHistory',[]);
+
+// known business keywords to auto-suggest checking
+var WF_BIZ_KEYWORDS=['lash','square','shopify','squarespace','google','amazon','paypal','zelle','venmo','salon','studio','beauty','affirm','hobbylobby','hobby lobby','michael','joann','ulta','sephora','insurance','quickbooks','canva','mailchimp','stan','acuity','netflix','hulu','spotify','apple.com/bill','icloud'];
+
+function renderWellsFargo(){renderWfHistory();}
+
+function wfDragOver(e){e.preventDefault();document.getElementById('wf-dropzone').style.borderColor='var(--forest)';document.getElementById('wf-dropzone').style.background='var(--cream-light)';}
+function wfDragLeave(e){document.getElementById('wf-dropzone').style.borderColor='var(--cream-dark)';document.getElementById('wf-dropzone').style.background='';}
+function wfDrop(e){e.preventDefault();wfDragLeave(e);var f=e.dataTransfer.files[0];if(f)wfParseFile(f);}
+function wfFileSelected(inp){if(inp.files[0])wfParseFile(inp.files[0]);inp.value='';}
+
+function wfParseFile(file){
+  if(!file.name.endsWith('.csv'))return alert('Please upload a .csv file exported from Wells Fargo.');
+  var reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      var raw=e.target.result;
+      var lines=raw.split('\n').filter(function(l){return l.trim();});
+      if(!lines.length)return alert('File appears empty.');
+
+      // Wells Fargo checking CSV has NO header row
+      // Format: "Date","Amount","*","*","Description"
+      // Example: "01/02/2026","-54.21","*","*","AFFIRM.COM PAYME..."
+      wfParsed=[];
+      for(var i=0;i<lines.length;i++){
+        var cols=sqSplitCSV(lines[i]); // reuse square CSV splitter
+        if(cols.length<5)continue;
+        var date=sqDate(cols[0].replace(/"/g,'').trim());
+        if(!date)continue;
+        var amount=parseFloat(cols[1].replace(/"/g,'').replace(/[^0-9.\-]/g,''));
+        if(isNaN(amount))continue;
+        var desc=cols[4]?cols[4].replace(/"/g,'').trim():'';
+        if(!desc)desc=cols[3]?cols[3].replace(/"/g,'').trim():'Bank transaction';
+        // clean up Wells Fargo's verbose descriptions
+        desc=wfCleanDesc(desc);
+        var type=amount<0?'expense':'income';
+        var amt=Math.abs(amount);
+        // auto-suggest business by keyword matching
+        var descLower=desc.toLowerCase();
+        var isBiz=WF_BIZ_KEYWORDS.some(function(k){return descLower.indexOf(k)>-1;});
+        // auto-suggest expense category
+        var cat=wfGuessCategory(descLower);
+        wfParsed.push({date:date,desc:desc,amount:amt,type:type,cat:cat,include:isBiz});
+      }
+      if(!wfParsed.length)return alert('No valid transactions found. Make sure you exported as CSV from Wells Fargo.');
+      wfShowPreview();
+    }catch(err){alert('Could not read this file.\n\n'+err.message);}
+  };
+  reader.readAsText(file);
+}
+
+function wfCleanDesc(desc){
+  // remove Wells Fargo boilerplate like "AUTHORIZED ON 01/01 " and card numbers
+  desc=desc.replace(/AUTHORIZED ON \d{2}\/\d{2}\s+/gi,'');
+  desc=desc.replace(/CARD \d{4}/gi,'').replace(/CARD\d{4}/gi,'');
+  desc=desc.replace(/\s{2,}/g,' ').trim();
+  // shorten if still long
+  if(desc.length>50)desc=desc.slice(0,48)+'…';
+  return desc;
+}
+
+function wfGuessCategory(desc){
+  if(desc.indexOf('lash')>-1||desc.indexOf('beauty')>-1||desc.indexOf('salon')>-1||desc.indexOf('ulta')>-1||desc.indexOf('sephora')>-1)return'Supplies & products';
+  if(desc.indexOf('google')>-1||desc.indexOf('squarespace')>-1||desc.indexOf('shopify')>-1||desc.indexOf('canva')>-1||desc.indexOf('quickbooks')>-1||desc.indexOf('stan')>-1||desc.indexOf('acuity')>-1||desc.indexOf('apple.com')>-1||desc.indexOf('icloud')>-1)return'Software & subscriptions';
+  if(desc.indexOf('amazon')>-1||desc.indexOf('hobbylobby')>-1||desc.indexOf('hobby lobby')>-1||desc.indexOf('michael')>-1||desc.indexOf('joann')>-1)return'Supplies & products';
+  if(desc.indexOf('insurance')>-1)return'Insurance';
+  if(desc.indexOf('phone')>-1||desc.indexOf('at&t')>-1||desc.indexOf('verizon')>-1||desc.indexOf('tmobile')>-1)return'Phone & internet';
+  if(desc.indexOf('square')>-1)return'Software & subscriptions';
+  if(desc.indexOf('zelle')>-1||desc.indexOf('venmo')>-1||desc.indexOf('paypal')>-1)return'Services rendered';
+  if(desc.indexOf('affirm')>-1)return'Equipment & tools';
+  return'Other';
+}
+
+function wfShowPreview(){
+  wfRenderRows(wfParsed);
+  document.getElementById('wf-preview').style.display='block';
+  document.getElementById('wf-dropzone').style.display='none';
+  wfUpdateSummary();
+}
+
+function wfRenderRows(rows){
+  var expCats=['Supplies & products','Continuing education','Marketing & advertising','Software & subscriptions','Rent & utilities','Insurance','Equipment & tools','Mileage & travel','Phone & internet','Professional services','Trade shows & events','Uniforms & clothing','Meals & entertainment','Licensing & permits','Services rendered','Other'];
+  document.getElementById('wf-preview-rows').innerHTML=rows.map(function(r){
+    var i=wfParsed.indexOf(r);
+    var catOpts=expCats.map(function(c){return'<option value="'+c+'"'+(c===r.cat?' selected':'')+'>'+c+'</option>';}).join('');
+    return'<tr style="'+(r.include?'':'opacity:0.45')+'" id="wfrow-'+i+'">'+
+      '<td>'+r.date+'</td>'+
+      '<td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+r.desc+'">'+r.desc+'</td>'+
+      '<td style="font-weight:600;color:'+(r.type==='expense'?'#8b4343':'#2F3E34')+'">'+(r.type==='expense'?'- ':'')+fmtD(r.amount)+'</td>'+
+      '<td><span class="badge '+(r.type==='expense'?'badge-red':'badge-green')+'">'+r.type+'</span></td>'+
+      '<td><select style="font-size:10px;padding:3px 6px;min-width:130px" onchange="wfParsed['+i+'].cat=this.value">'+catOpts+'</select></td>'+
+      '<td><input type="checkbox" '+(r.include?'checked':'')+' onchange="wfParsed['+i+'].include=this.checked;wfUpdateSummary();document.getElementById(\'wfrow-'+i+'\').style.opacity=this.checked?\'1\':\'0.45\'"></td>'+
+    '</tr>';
+  }).join('');
+  wfUpdateCount();
+}
+
+function wfFilter(search){
+  var typeFilter=document.getElementById('wf-type-filter').value;
+  var filtered=wfParsed.filter(function(r){
+    var matchSearch=!search||r.desc.toLowerCase().indexOf(search.toLowerCase())>-1;
+    var matchType=typeFilter==='all'||(typeFilter==='expense'&&r.type==='expense')||(typeFilter==='income'&&r.type==='income');
+    return matchSearch&&matchType;
+  });
+  wfRenderRows(filtered);
+}
+
+function wfSelectAll(val){
+  wfParsed.forEach(function(r){r.include=val;});
+  wfRenderRows(wfParsed);
+  wfUpdateSummary();
+}
+
+function wfUpdateSummary(){
+  var selected=wfParsed.filter(function(r){return r.include;});
+  var selExp=selected.filter(function(r){return r.type==='expense';}).reduce(function(s,r){return s+r.amount;},0);
+  var selInc=selected.filter(function(r){return r.type==='income';}).reduce(function(s,r){return s+r.amount;},0);
+  document.getElementById('wf-summary').innerHTML=
+    '<div class="metric-card"><div class="m-label">Total rows</div><div class="m-val">'+wfParsed.length+'</div></div>'+
+    '<div class="metric-card accent"><div class="m-label">Selected</div><div class="m-val">'+selected.length+'</div></div>'+
+    '<div class="metric-card"><div class="m-label">Selected expenses</div><div class="m-val" style="color:#8b4343">'+fmtD(selExp)+'</div></div>'+
+    '<div class="metric-card"><div class="m-label">Selected income</div><div class="m-val">'+fmtD(selInc)+'</div></div>';
+  wfUpdateCount();
+}
+
+function wfUpdateCount(){
+  var n=wfParsed.filter(function(r){return r.include;}).length;
+  var el=document.getElementById('wf-count-label');
+  if(el)el.textContent=n+' of '+wfParsed.length+' rows selected';
+}
+
+function wfImport(){
+  var rows=wfParsed.filter(function(r){return r.include;});
+  if(!rows.length)return alert('No rows selected.');
+  var imported=0,skipped=0;
+  rows.forEach(function(r){
+    // duplicate check
+    var dup=expenses.find(function(e){return e.date===r.date&&Math.abs(Number(e.amount)-r.amount)<0.01&&e.source==='wellsfargo';});
+    var dupTx=transactions.find(function(t){return t.date===r.date&&Math.abs(Number(t.amount)-r.amount)<0.01&&t.source==='wellsfargo';});
+    if(dup||dupTx){skipped++;return;}
+    if(r.type==='expense'){
+      expenses.push({desc:r.desc,cat:r.cat,amount:r.amount,date:r.date,deduct:'yes',notes:'Via Wells Fargo import',source:'wellsfargo'});
+    } else {
+      transactions.push({date:r.date,desc:r.desc,cat:r.cat,type:'income',amount:r.amount,source:'wellsfargo'});
+    }
+    imported++;
+  });
+  persist();
+  wfImportHistory.unshift({date:new Date().toISOString().slice(0,10),rows:imported,skipped:skipped});
+  save('wfImportHistory',wfImportHistory);
+  wfCancel();
+  renderWfHistory();
+  showToast(imported+' transactions imported!'+(skipped>0?' '+skipped+' duplicates skipped.':''));
+}
+
+function wfCancel(){
+  wfParsed=[];
+  document.getElementById('wf-preview').style.display='none';
+  document.getElementById('wf-dropzone').style.display='';
+}
+
+function renderWfHistory(){
+  var el=document.getElementById('wf-history');
+  if(!el)return;
+  if(!wfImportHistory.length){el.innerHTML='<div class="empty">No imports yet</div>';return;}
+  el.innerHTML='<table><thead><tr><th>Import date</th><th>Rows imported</th><th>Duplicates skipped</th></tr></thead><tbody>'+
+    wfImportHistory.map(function(h){return'<tr><td>'+h.date+'</td><td>'+h.rows+'</td><td style="color:var(--ink-muted)">'+h.skipped+'</td></tr>';}).join('')+
+  '</tbody></table>';
+}
+
 // ── BACKUP & SYNC ─────────────────────────────────────────────────────
 function exportAllData(){
   var backup={
@@ -1333,7 +1575,8 @@ function exportAllData(){
     goals:goals,
     cats:cats,
     themeSettings:themeSettings,
-    sqImportHistory:sqImportHistory
+    sqImportHistory:sqImportHistory,
+    wfImportHistory:wfImportHistory
   };
   var json=JSON.stringify(backup,null,2);
   var blob=new Blob([json],{type:'application/json'});
@@ -1367,6 +1610,7 @@ function importAllData(input){
       if(data.cats)       {cats=data.cats;            save('cats',cats);}
       if(data.themeSettings){themeSettings=data.themeSettings;save('themeSettings',themeSettings);}
       if(data.sqImportHistory){sqImportHistory=data.sqImportHistory;save('sqImportHistory',sqImportHistory);}
+      if(data.wfImportHistory){wfImportHistory=data.wfImportHistory;save('wfImportHistory',wfImportHistory);}
       // re-render everything
       refreshAllSelects();
       restoreTheme();
