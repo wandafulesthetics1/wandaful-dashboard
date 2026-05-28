@@ -219,6 +219,10 @@ input:focus,select:focus{border-color:var(--forest)}
       <svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
       <span>Budget</span>
     </button>
+    <button class="nav-item" onclick="showPage('square',this)">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 12h8M12 8v8"/></svg>
+      <span>Square Import</span>
+    </button>
     <button class="nav-item" onclick="showPage('booking',this)">
       <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
       <span>Booking</span>
@@ -512,6 +516,56 @@ input:focus,select:focus{border-color:var(--forest)}
     </div>
   </div>
 
+  <!-- SQUARE IMPORT -->
+  <div id="page-square" class="page">
+    <div class="page-header"><h1>Square Import</h1><p>Export your transactions from Square and drop the CSV here — we'll handle the rest.</p></div>
+
+    <!-- how to export -->
+    <div class="card" style="margin-bottom:18px">
+      <div class="card-header"><div class="card-title">How to export from Square</div></div>
+      <div class="steps">
+        <div class="step"><div class="step-num">1</div><div class="step-text">Go to <strong>squareup.com</strong> → sign in → click <strong>Transactions</strong> in the left menu</div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-text">Set your date range (e.g. this month, this year)</div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-text">Click the <strong>Export</strong> button → select <strong>Transactions CSV</strong></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-text">Save the file and drop it in the import box below</div></div>
+      </div>
+    </div>
+
+    <!-- drop zone -->
+    <div class="card">
+      <div class="card-header"><div class="card-title">Import CSV</div></div>
+      <div id="sq-dropzone" style="border:2px dashed var(--cream-dark);border-radius:var(--radius);padding:40px 24px;text-align:center;cursor:pointer;transition:all 0.2s;margin-bottom:16px" onclick="document.getElementById('sq-file').click()" ondragover="sqDragOver(event)" ondragleave="sqDragLeave(event)" ondrop="sqDrop(event)">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--ink-muted);margin-bottom:10px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <div style="font-size:13px;font-weight:500;color:var(--ink);margin-bottom:4px">Drop your Square CSV here</div>
+        <div style="font-size:11px;color:var(--ink-muted)">or click to browse</div>
+        <input type="file" id="sq-file" accept=".csv" style="display:none" onchange="sqFileSelected(this)">
+      </div>
+
+      <!-- preview -->
+      <div id="sq-preview" style="display:none">
+        <div style="font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-muted);font-weight:600;margin-bottom:10px">Preview — review before importing</div>
+        <div id="sq-summary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:14px"></div>
+        <div style="max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:14px">
+          <table style="font-size:11px">
+            <thead><tr><th>Date</th><th>Description</th><th>Gross</th><th>Fees</th><th>Net</th><th>Tip</th><th>Include?</th></tr></thead>
+            <tbody id="sq-preview-rows"></tbody>
+          </table>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="sqImport()">Import selected rows</button>
+          <button class="btn btn-ghost" onclick="sqCancel()">Cancel</button>
+          <span style="font-size:11px;color:var(--ink-muted)" id="sq-count-label"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- import history -->
+    <div class="card">
+      <div class="card-header"><div class="card-title">Import history</div></div>
+      <div id="sq-history"></div>
+    </div>
+  </div>
+
   <!-- BOOKING -->
   <div id="page-booking" class="page">
     <div class="page-header"><h1>Booking</h1><p>Your Acuity scheduling — connected to your dashboard.</p></div>
@@ -665,7 +719,7 @@ function showPage(id,el){
   document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active');});
   document.getElementById('page-'+id).classList.add('active');
   if(el)el.classList.add('active');
-  var r={dashboard:renderDash,analytics:renderAnalytics,goals:renderGoals,clients:renderClients,tips:renderTips,education:renderEdu,expenses:renderExpenses,inventory:renderInv,budget:renderBudget,settings:renderSettings};
+  var r={dashboard:renderDash,analytics:renderAnalytics,goals:renderGoals,clients:renderClients,tips:renderTips,education:renderEdu,expenses:renderExpenses,inventory:renderInv,budget:renderBudget,square:renderSquare,settings:renderSettings};
   if(r[id])r[id]();
 }
 
@@ -1110,6 +1164,161 @@ document.addEventListener('click',function(e){
   if(e.target===m)closeEdit();
 });
 
+// ── SQUARE CSV IMPORT ────────────────────────────────────────────────
+var sqParsed=[];
+var sqImportHistory=load('sqImportHistory',[]);
+
+function renderSquare(){renderSqHistory();}
+
+function sqDragOver(e){e.preventDefault();document.getElementById('sq-dropzone').style.borderColor='var(--forest)';document.getElementById('sq-dropzone').style.background='var(--cream-light)';}
+function sqDragLeave(e){document.getElementById('sq-dropzone').style.borderColor='var(--cream-dark)';document.getElementById('sq-dropzone').style.background='';}
+function sqDrop(e){e.preventDefault();sqDragLeave(e);var f=e.dataTransfer.files[0];if(f)sqParseFile(f);}
+function sqFileSelected(inp){if(inp.files[0])sqParseFile(inp.files[0]);inp.value='';}
+
+function sqParseFile(file){
+  if(!file.name.endsWith('.csv'))return alert('Please upload a .csv file exported from Square.');
+  var reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      var lines=e.target.result.split('\n').filter(function(l){return l.trim();});
+      if(!lines.length)return alert('File appears empty.');
+      var headers=lines[0].split(',').map(function(h){return h.replace(/"/g,'').trim().toLowerCase();});
+      // find key column indices — Square CSV has many columns, we grab what we need
+      var idx={
+        date:    sqCol(headers,['date']),
+        desc:    sqCol(headers,['description','item name','transaction type']),
+        gross:   sqCol(headers,['gross sales','gross amount','total collected']),
+        fees:    sqCol(headers,['fees','processing fee','fee']),
+        net:     sqCol(headers,['net total','net sales','net amount']),
+        tip:     sqCol(headers,['tip','tips']),
+        tax:     sqCol(headers,['tax','sales tax']),
+        status:  sqCol(headers,['transaction status','status']),
+        type:    sqCol(headers,['event type','transaction type','type']),
+      };
+      if(idx.date===-1||idx.gross===-1)return alert('This doesn\'t look like a Square Transactions CSV. Make sure you export from Transactions → Export → Transactions CSV in your Square dashboard.');
+      sqParsed=[];
+      for(var i=1;i<lines.length;i++){
+        var cols=sqSplitCSV(lines[i]);
+        if(!cols.length||!cols[idx.date])continue;
+        var status=idx.status>-1?cols[idx.status].replace(/"/g,'').trim().toLowerCase():'';
+        var evType=idx.type>-1?cols[idx.type].replace(/"/g,'').trim().toLowerCase():'';
+        // skip payouts/transfers/voids/failures
+        if(evType.indexOf('payout')>-1||evType.indexOf('transfer')>-1||status==='voided'||status==='failed'||status==='canceled')continue;
+        var gross=sqNum(idx.gross>-1?cols[idx.gross]:'0');
+        if(gross===0)continue; // skip zero-value rows
+        var fees=Math.abs(sqNum(idx.fees>-1?cols[idx.fees]:'0'));
+        var net=idx.net>-1?sqNum(cols[idx.net]):gross-fees;
+        var tip=sqNum(idx.tip>-1?cols[idx.tip]:'0');
+        var desc=idx.desc>-1?cols[idx.desc].replace(/"/g,'').trim():'Square sale';
+        if(!desc)desc='Square sale';
+        var date=sqDate(cols[idx.date].replace(/"/g,'').trim());
+        if(!date)continue;
+        sqParsed.push({date:date,desc:desc,gross:gross,fees:fees,net:net,tip:tip,include:true});
+      }
+      if(!sqParsed.length)return alert('No valid transactions found. Make sure the date range has sales.');
+      sqShowPreview();
+    }catch(err){alert('Could not read this file. Error: '+err.message);}
+  };
+  reader.readAsText(file);
+}
+
+function sqCol(headers,names){
+  for(var i=0;i<names.length;i++){
+    var idx=headers.findIndex(function(h){return h.indexOf(names[i])>-1;});
+    if(idx>-1)return idx;
+  }
+  return -1;
+}
+function sqNum(v){if(!v)return 0;var n=parseFloat(String(v).replace(/[^0-9.\-]/g,''));return isNaN(n)?0:n;}
+function sqSplitCSV(line){
+  var result=[],cur='',inQ=false;
+  for(var i=0;i<line.length;i++){
+    var c=line[i];
+    if(c==='"'){inQ=!inQ;}
+    else if(c===','&&!inQ){result.push(cur);cur='';}
+    else cur+=c;
+  }
+  result.push(cur);
+  return result;
+}
+function sqDate(raw){
+  // handle formats: MM/DD/YYYY, YYYY-MM-DD, MM/DD/YY
+  var m;
+  if((m=raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/)))return m[3]+'-'+m[1].padStart(2,'0')+'-'+m[2].padStart(2,'0');
+  if((m=raw.match(/^(\d{4})-(\d{2})-(\d{2})/)))return m[1]+'-'+m[2]+'-'+m[3];
+  if((m=raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})/)))return'20'+m[3]+'-'+m[1].padStart(2,'0')+'-'+m[2].padStart(2,'0');
+  return null;
+}
+
+function sqShowPreview(){
+  var totalGross=0,totalFees=0,totalTips=0,count=sqParsed.length;
+  sqParsed.forEach(function(r){totalGross+=r.gross;totalFees+=r.fees;totalTips+=r.tip;});
+  document.getElementById('sq-summary').innerHTML=
+    '<div class="metric-card accent"><div class="m-label">Transactions</div><div class="m-val">'+count+'</div></div>'+
+    '<div class="metric-card"><div class="m-label">Gross sales</div><div class="m-val">'+fmtD(totalGross)+'</div></div>'+
+    '<div class="metric-card"><div class="m-label">Square fees</div><div class="m-val" style="color:#8b4343">'+fmtD(totalFees)+'</div></div>'+
+    '<div class="metric-card"><div class="m-label">Tips</div><div class="m-val">'+fmtD(totalTips)+'</div></div>';
+  document.getElementById('sq-preview-rows').innerHTML=sqParsed.map(function(r,i){
+    return'<tr>'+
+      '<td>'+r.date+'</td>'+
+      '<td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+r.desc+'</td>'+
+      '<td style="color:#2F3E34;font-weight:500">'+fmtD(r.gross)+'</td>'+
+      '<td style="color:#8b4343">'+fmtD(r.fees)+'</td>'+
+      '<td style="font-weight:600">'+fmtD(r.net)+'</td>'+
+      '<td>'+(r.tip>0?fmtD(r.tip):'—')+'</td>'+
+      '<td><input type="checkbox" '+(r.include?'checked':'')+" onchange=\"sqParsed["+i+"].include=this.checked;sqUpdateCount()\"></td>"+
+    '</tr>';
+  }).join('');
+  sqUpdateCount();
+  document.getElementById('sq-preview').style.display='block';
+  document.getElementById('sq-dropzone').style.display='none';
+}
+
+function sqUpdateCount(){
+  var n=sqParsed.filter(function(r){return r.include;}).length;
+  document.getElementById('sq-count-label').textContent=n+' of '+sqParsed.length+' rows selected';
+}
+
+function sqImport(){
+  var rows=sqParsed.filter(function(r){return r.include;});
+  if(!rows.length)return alert('No rows selected.');
+  var imported=0,skipped=0;
+  rows.forEach(function(r){
+    // check for duplicate by date + amount
+    var dup=transactions.find(function(t){return t.date===r.date&&Math.abs(Number(t.amount)-r.gross)<0.01&&t.source==='square';});
+    if(dup){skipped++;return;}
+    // log gross sale as income
+    transactions.push({date:r.date,desc:r.desc,cat:'Services rendered',type:'income',amount:r.gross,source:'square'});
+    // log Square fees as expense
+    if(r.fees>0)expenses.push({desc:'Square fees — '+r.date,cat:'Software & subscriptions',amount:r.fees,date:r.date,deduct:'yes',notes:'Square processing fee',source:'square'});
+    // log tip separately
+    if(r.tip>0)tips.push({name:r.desc,amount:r.tip,date:r.date,notes:'Via Square import'});
+    imported++;
+  });
+  persist();
+  // save to import history
+  sqImportHistory.unshift({date:new Date().toISOString().slice(0,10),rows:imported,skipped:skipped,gross:rows.reduce(function(s,r){return s+r.gross;},0)});
+  save('sqImportHistory',sqImportHistory);
+  sqCancel();
+  renderSqHistory();
+  showToast(imported+' transactions imported! '+(skipped>0?skipped+' duplicates skipped.':''));
+}
+
+function sqCancel(){
+  sqParsed=[];
+  document.getElementById('sq-preview').style.display='none';
+  document.getElementById('sq-dropzone').style.display='';
+}
+
+function renderSqHistory(){
+  var el=document.getElementById('sq-history');
+  if(!el)return;
+  if(!sqImportHistory.length){el.innerHTML='<div class="empty">No imports yet</div>';return;}
+  el.innerHTML='<table><thead><tr><th>Import date</th><th>Transactions</th><th>Gross imported</th><th>Duplicates skipped</th></tr></thead><tbody>'+
+    sqImportHistory.map(function(h){return'<tr><td>'+h.date+'</td><td>'+h.rows+'</td><td style="font-weight:600">'+fmtD(h.gross)+'</td><td style="color:var(--ink-muted)">'+h.skipped+'</td></tr>';}).join('')+
+  '</tbody></table>';
+}
+
 // ── BACKUP & SYNC ─────────────────────────────────────────────────────
 function exportAllData(){
   var backup={
@@ -1123,7 +1332,8 @@ function exportAllData(){
     expenses:expenses,
     goals:goals,
     cats:cats,
-    themeSettings:themeSettings
+    themeSettings:themeSettings,
+    sqImportHistory:sqImportHistory
   };
   var json=JSON.stringify(backup,null,2);
   var blob=new Blob([json],{type:'application/json'});
@@ -1156,6 +1366,7 @@ function importAllData(input){
       if(data.goals)      {goals=data.goals;         save('goals',goals);}
       if(data.cats)       {cats=data.cats;            save('cats',cats);}
       if(data.themeSettings){themeSettings=data.themeSettings;save('themeSettings',themeSettings);}
+      if(data.sqImportHistory){sqImportHistory=data.sqImportHistory;save('sqImportHistory',sqImportHistory);}
       // re-render everything
       refreshAllSelects();
       restoreTheme();
