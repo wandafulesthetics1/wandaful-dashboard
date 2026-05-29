@@ -1109,10 +1109,10 @@ function renderExpenses(){
 
   // build period selector from available months
   var periodSel=document.getElementById('exp-period-sel');
-  var allMonths=[...new Set([new Date().toISOString().slice(0,7)].concat(expenses.map(function(e){return e.date.slice(0,7);})))].sort().reverse();
   var curMo=new Date().toISOString().slice(0,7);
-  var selPeriod=periodSel?periodSel.value:'';
-  if(!selPeriod||selPeriod===''){selPeriod=curMo;}
+  var allMonths=[...new Set([curMo].concat(expenses.map(function(e){return e.date.slice(0,7);})))].sort().reverse();
+  var prevSel=periodSel?periodSel.value:'';
+  var selPeriod=prevSel&&prevSel!==''?prevSel:curMo;
   if(periodSel){
     var opts='<option value="all"'+(selPeriod==='all'?' selected':'')+'>All time</option>'+
       allMonths.map(function(m){
@@ -1121,6 +1121,9 @@ function renderExpenses(){
         return'<option value="'+m+'"'+(m===selPeriod?' selected':'')+'>'+label+'</option>';
       }).join('');
     periodSel.innerHTML=opts;
+    // ensure the value is set correctly after rebuilding
+    periodSel.value=selPeriod;
+    if(!periodSel.value)periodSel.value=curMo;
     selPeriod=periodSel.value;
   }
 
@@ -1219,8 +1222,8 @@ function renderBudget(){
   var periodSel=document.getElementById('bud-period-sel');
   var curMo=new Date().toISOString().slice(0,7);
   var allMonths=[...new Set([curMo].concat(transactions.map(function(t){return t.date.slice(0,7);})))].sort().reverse();
-  var selPeriod=periodSel?periodSel.value:'';
-  if(!selPeriod)selPeriod=curMo;
+  var prevSel=periodSel?periodSel.value:'';
+  var selPeriod=prevSel&&prevSel!==''?prevSel:curMo;
   if(periodSel){
     var opts='<option value="all"'+(selPeriod==='all'?' selected':'')+'>All time</option>'+
       '<option value="year"'+(selPeriod==='year'?' selected':'')+'>This year</option>'+
@@ -1230,6 +1233,8 @@ function renderBudget(){
         return'<option value="'+m+'"'+(m===selPeriod?' selected':'')+'>'+label+'</option>';
       }).join('');
     periodSel.innerHTML=opts;
+    periodSel.value=selPeriod;
+    if(!periodSel.value)periodSel.value=curMo;
     selPeriod=periodSel.value;
   }
 
