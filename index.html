@@ -799,10 +799,10 @@ function totals(){
   var svcInc=0,txExp=0;
   transactions.forEach(function(t){if(t.type==='income')svcInc+=Number(t.amount);else txExp+=Number(t.amount);});
   var tipTotal=tips.reduce(function(s,t){return s+Number(t.amount);},0);
-  var eduInc=eduEvents.reduce(function(s,e){return s+Number(e.revenue);},0);
+  var eduInc=eduEvents.reduce(function(s,e){return s+Number(e.revenue);},0); // tracked separately, not counted in P&L
   var expTotal=expenses.reduce(function(s,e){return s+Number(e.amount);},0);
   var totalExp=txExp+expTotal;
-  var totalInc=svcInc+tipTotal+eduInc;
+  var totalInc=svcInc+tipTotal; // education excluded to avoid double-counting
   return{svcInc:svcInc,tips:tipTotal,eduInc:eduInc,totalInc:totalInc,exp:totalExp,net:totalInc-totalExp};
 }
 
@@ -874,9 +874,9 @@ function renderDash(){
   var svcInc=yrTx.filter(function(t){return t.type==='income';}).reduce(function(s,t){return s+Number(t.amount);},0);
   var txExp=yrTx.filter(function(t){return t.type==='expense';}).reduce(function(s,t){return s+Number(t.amount);},0);
   var tipTotal=yrTips.reduce(function(s,t){return s+Number(t.amount);},0);
-  var eduInc=yrEdu.reduce(function(s,e){return s+Number(e.revenue);},0);
+  var eduInc=yrEdu.reduce(function(s,e){return s+Number(e.revenue);},0); // for reference only
   var expTotal=yrExp.reduce(function(s,e){return s+Number(e.amount);},0);
-  var totalInc=svcInc+tipTotal+eduInc;
+  var totalInc=svcInc+tipTotal; // education excluded to avoid double-counting
   var totalExp=txExp+expTotal;
   var net=totalInc-totalExp;
   var margin=totalInc>0?Math.round((net/totalInc)*100):0;
@@ -885,8 +885,7 @@ function renderDash(){
   var mo=new Date().toISOString().slice(0,7);
   var mSvc=0;transactions.forEach(function(x){if(x.type==='income'&&x.date.startsWith(mo))mSvc+=Number(x.amount);});
   var mTip=0;tips.forEach(function(x){if(x.date.startsWith(mo))mTip+=Number(x.amount);});
-  var mEdu=0;eduEvents.forEach(function(x){if(x.date.startsWith(mo))mEdu+=Number(x.revenue);});
-  var mTotal=mSvc+mTip+mEdu;
+  var mTotal=mSvc+mTip; // education excluded
 
   var periodLabel=isAll?'All time':curYear;
 
@@ -894,21 +893,21 @@ function renderDash(){
     '<div class="metric-card accent"><div class="m-label">This Month</div><div class="m-val">'+fmtD(mTotal)+'</div><div class="m-sub">all streams</div></div>'+
     '<div class="metric-card"><div class="m-label">Service Income</div><div class="m-val">'+fmt(svcInc)+'</div><div class="m-sub">'+periodLabel+'</div></div>'+
     '<div class="metric-card"><div class="m-label">Tips Earned</div><div class="m-val">'+fmt(tipTotal)+'</div><div class="m-sub">'+periodLabel+'</div></div>'+
-    '<div class="metric-card"><div class="m-label">Education</div><div class="m-val">'+fmt(eduInc)+'</div><div class="m-sub">'+periodLabel+'</div></div>'+
+    '<div class="metric-card"><div class="m-label">Total Expenses</div><div class="m-val" style="color:#8b4343">'+fmt(totalExp)+'</div><div class="m-sub">'+periodLabel+'</div></div>'+
     '<div class="metric-card"><div class="m-label">Net Profit</div><div class="m-val">'+fmt(net)+'</div><div class="m-sub">'+margin+'% margin</div></div>';
 
   document.getElementById('pnl-rows').innerHTML=
     '<div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border)"><span style="color:var(--ink-muted)">Service income</span><span style="font-weight:600">'+fmtD(svcInc)+'</span></div>'+
     '<div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border)"><span style="color:var(--ink-muted)">Tips</span><span style="font-weight:600">'+fmtD(tipTotal)+'</span></div>'+
-    '<div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border)"><span style="color:var(--ink-muted)">Education income</span><span style="font-weight:600">'+fmtD(eduInc)+'</span></div>'+
     '<div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px solid var(--border)"><span style="color:var(--ink-muted)">Total expenses</span><span style="color:#8b4343;font-weight:600">- '+fmtD(totalExp)+'</span></div>'+
     '<div style="display:flex;justify-content:space-between;font-size:13px;padding:8px 0 3px;font-weight:600"><span>Net profit</span><span>'+fmtD(net)+'</span></div>'+
     '<div style="font-size:10px;color:var(--ink-muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:0.05em">Profit margin — '+margin+'%</div>'+
-    '<div class="pnl-bar"><div class="pnl-fill" style="width:'+Math.min(100,Math.max(0,margin))+'%"></div></div>';
+    '<div class="pnl-bar"><div class="pnl-fill" style="width:'+Math.min(100,Math.max(0,margin))+'%"></div></div>'+
+    '<div style="font-size:10px;color:var(--ink-muted);margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">Trainings & Education tracked separately — '+fmtD(eduInc)+' logged</div>';
 
   document.getElementById('income-streams').innerHTML=
     '<div style="font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-muted);margin-bottom:8px;font-weight:600">Income breakdown — '+periodLabel+'</div>'+
-    streamRow('Services',svcInc,totalInc,'#1C1C1C')+streamRow('Tips',tipTotal,totalInc,'#B8AFA3')+streamRow('Education',eduInc,totalInc,'#7a7268');
+    streamRow('Services',svcInc,totalInc,'#1C1C1C')+streamRow('Tips',tipTotal,totalInc,'#B8AFA3');
 
   var now=new Date();var cm=now.getFullYear()+'-'+(String(now.getMonth()+1).padStart(2,'0'));
   var cg=goals.find(function(g){return g.month===cm;});
@@ -953,9 +952,9 @@ function renderAnalytics(){
   document.getElementById('an-metrics').innerHTML=
     '<div class="metric-card accent"><div class="m-label">'+cy+' Income</div><div class="m-val">'+fmt(tI)+'</div></div>'+
     '<div class="metric-card"><div class="m-label">Tips</div><div class="m-val">'+fmt(tTip)+'</div></div>'+
-    '<div class="metric-card"><div class="m-label">Education</div><div class="m-val">'+fmt(tEdu)+'</div></div>'+
     '<div class="metric-card"><div class="m-label">Expenses</div><div class="m-val" style="color:#8b4343">'+fmt(tE)+'</div></div>'+
     '<div class="metric-card"><div class="m-label">Net Profit</div><div class="m-val">'+fmt(net)+'</div></div>'+
+    '<div class="metric-card"><div class="m-label">Margin</div><div class="m-val">'+mg+'%</div></div>'+
     '<div class="metric-card"><div class="m-label">Avg / Month</div><div class="m-val">'+fmt(Math.round(tI/ac))+'</div></div>';
   dC('monthlyChart');
   var o1=merge();o1.plugins.tooltip={callbacks:{label:function(ctx){return ctx.dataset.label+': '+fmt(ctx.raw);}}};
@@ -975,8 +974,8 @@ function renderAnalytics(){
   var sl=Object.keys(sm),sd=Object.values(sm);var sc=['#1C1C1C','#3a3330','#B8AFA3','#E8DFD2','#7a7268','#6b635c','#8b4343'];
   dC('serviceChart');
   CI['serviceChart']=new Chart(document.getElementById('serviceChart'),{type:'doughnut',data:{labels:sl,datasets:[{data:sd,backgroundColor:sc.slice(0,sl.length),borderWidth:2,borderColor:'#F6F2EC',hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'right',labels:{font:{size:10,family:'Montserrat'},color:'#7a7268',boxWidth:9,padding:7}},tooltip:{callbacks:{label:function(ctx){return ctx.label+': '+fmt(ctx.raw);}}}}}});
-  var tot=tI+tTip+tEdu||1;
-  document.getElementById('an-streams').innerHTML=streamRow('Services',tI,tot,'#1C1C1C')+streamRow('Tips',tTip,tot,'#B8AFA3')+streamRow('Education',tEdu,tot,'#7a7268');
+  var tot=tI+tTip||1;
+  document.getElementById('an-streams').innerHTML=streamRow('Services',tI,tot,'#1C1C1C')+streamRow('Tips',tTip,tot,'#B8AFA3');
 }
 
 // ── GOALS ─────────────────────────────────────────────────────────────
