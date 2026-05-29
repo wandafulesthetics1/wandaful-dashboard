@@ -531,7 +531,7 @@ input:focus,select:focus{border-color:var(--forest)}
   <!-- BUDGET -->
   <div id="page-budget" class="page">
     <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">
-      <div><h1>Budget &amp; Transactions</h1><p>Full ledger — all income and expenses in one view.</p></div>
+      <div><h1>Transactions</h1><p>Full ledger — all income and expenses in one view.</p></div>
       <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
         <label style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink-muted);font-weight:600">Viewing</label>
         <select id="bud-period-sel" onchange="renderBudget()" style="font-size:12px;padding:6px 12px;min-width:130px;font-weight:500"></select>
@@ -1109,7 +1109,7 @@ function renderExpenses(){
 
   // build period selector from available months
   var periodSel=document.getElementById('exp-period-sel');
-  var allMonths=[...new Set(expenses.map(function(e){return e.date.slice(0,7);}))].sort().reverse();
+  var allMonths=[...new Set([new Date().toISOString().slice(0,7)].concat(expenses.map(function(e){return e.date.slice(0,7);})))].sort().reverse();
   var curMo=new Date().toISOString().slice(0,7);
   var selPeriod=periodSel?periodSel.value:'';
   if(!selPeriod||selPeriod===''){selPeriod=curMo;}
@@ -1217,8 +1217,8 @@ function addItem(){
 function renderBudget(){
   // build period selector
   var periodSel=document.getElementById('bud-period-sel');
-  var allMonths=[...new Set(transactions.map(function(t){return t.date.slice(0,7);}))].sort().reverse();
   var curMo=new Date().toISOString().slice(0,7);
+  var allMonths=[...new Set([curMo].concat(transactions.map(function(t){return t.date.slice(0,7);})))].sort().reverse();
   var selPeriod=periodSel?periodSel.value:'';
   if(!selPeriod)selPeriod=curMo;
   if(periodSel){
