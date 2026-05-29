@@ -162,6 +162,9 @@ input:focus,select:focus{border-color:var(--forest)}
 .edit-field input,.edit-field select{padding:8px 11px;border:1px solid var(--cream-dark);border-radius:var(--radius-sm);font-size:12px;background:var(--white);color:var(--ink);font-family:'Montserrat',sans-serif;width:100%;outline:none}
 .edit-field input:focus,.edit-field select:focus{border-color:var(--forest)}
 .edit-two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+/* filter bar */
+.filter-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:10px 0 12px;border-bottom:1px solid var(--border);margin-bottom:12px}
+.filter-bar input,.filter-bar select{padding:6px 10px;font-size:11px;min-width:90px;width:auto}
 @media(max-width:768px){
   .sidebar{width:54px}
   .brand-eyebrow,.brand-name,.brand-sub,.nav-section-label,.nav-item span,.sidebar-footer span{display:none}
@@ -462,6 +465,20 @@ input:focus,select:focus{border-color:var(--forest)}
           CSV
         </button>
       </div>
+      <div class="filter-bar">
+        <input id="exp-search" placeholder="Search description..." oninput="renderExpenses()" style="flex:1;min-width:130px">
+        <select id="exp-cat-filter" onchange="renderExpenses()" style="min-width:140px"><option value="">All categories</option></select>
+        <select id="exp-deduct-filter" onchange="renderExpenses()">
+          <option value="">All</option>
+          <option value="yes">Deductible</option>
+          <option value="no">Not deductible</option>
+          <option value="partial">Partial</option>
+        </select>
+        <input id="exp-from" type="month" onchange="renderExpenses()" title="From month">
+        <input id="exp-to" type="month" onchange="renderExpenses()" title="To month">
+        <button class="btn btn-ghost" style="font-size:10px;padding:5px 10px;white-space:nowrap" onclick="clearExpFilters()">Clear</button>
+      </div>
+      <div id="exp-filter-summary" style="font-size:11px;color:var(--ink-muted);margin-bottom:8px"></div>
       <table><thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Deductible</th><th>Amount</th><th></th></tr></thead><tbody id="exp-table"></tbody></table>
     </div>
   </div>
@@ -516,6 +533,19 @@ input:focus,select:focus{border-color:var(--forest)}
           </button>
         </div>
       </div>
+      <div class="filter-bar">
+        <input id="bud-search" placeholder="Search description..." oninput="renderBudget()" style="flex:1;min-width:130px">
+        <select id="bud-type-filter" onchange="renderBudget()">
+          <option value="">All types</option>
+          <option value="income">Income</option>
+          <option value="expense">Expense</option>
+        </select>
+        <select id="bud-cat-filter" onchange="renderBudget()" style="min-width:140px"><option value="">All categories</option></select>
+        <input id="bud-from" type="month" onchange="renderBudget()" title="From month">
+        <input id="bud-to" type="month" onchange="renderBudget()" title="To month">
+        <button class="btn btn-ghost" style="font-size:10px;padding:5px 10px;white-space:nowrap" onclick="clearBudFilters()">Clear</button>
+      </div>
+      <div id="bud-filter-summary" style="font-size:11px;color:var(--ink-muted);margin-bottom:8px"></div>
       <table><thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Type</th><th>Amount</th><th></th></tr></thead><tbody id="budget-table"></tbody></table>
     </div>
   </div>
@@ -586,7 +616,7 @@ input:focus,select:focus{border-color:var(--forest)}
 
     <div class="card">
       <div class="card-header"><div class="card-title">Import CSV</div></div>
-      <p style="font-size:11px;color:var(--ink-muted);margin-bottom:14px;line-height:1.7">Since this is a personal account, <strong>only check the rows that are business expenses.</strong> Uncheck everything personal — groceries, restaurants, etc. Only checked rows get imported.</p>
+      <p style="font-size:11px;color:var(--ink-muted);margin-bottom:14px;line-height:1.7">Defaults to <strong>expenses only</strong> since your Square Import already handles income. Income rows are hidden and unchecked by default — use the filter to show them if needed.</p>
 
       <div id="wf-dropzone" style="border:2px dashed var(--cream-dark);border-radius:var(--radius);padding:40px 24px;text-align:center;cursor:pointer;transition:all 0.2s;margin-bottom:16px" onclick="document.getElementById('wf-file').click()" ondragover="wfDragOver(event)" ondragleave="wfDragLeave(event)" ondrop="wfDrop(event)">
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--ink-muted);margin-bottom:10px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -993,10 +1023,43 @@ function renderExpenses(){
     '<div class="metric-card"><div class="m-label">All-time Total</div><div class="m-val" style="color:#8b4343">'+fmt(total)+'</div></div>'+
     '<div class="metric-card"><div class="m-label">Tax Deductible</div><div class="m-val">'+fmt(deduct)+'</div><div class="m-sub">potential savings</div></div>'+
     '<div class="metric-card"><div class="m-label">Top Category</div><div class="m-val" style="font-size:13px;padding-top:3px">'+top+'</div></div>';
+
+  // populate category dropdown
+  var catSel=document.getElementById('exp-cat-filter');
+  if(catSel){
+    var cats2=[...new Set(expenses.map(function(e){return e.cat;}))].sort();
+    var curCat=catSel.value;
+    catSel.innerHTML='<option value="">All categories</option>'+cats2.map(function(c){return'<option value="'+c+'"'+(c===curCat?' selected':'')+'>'+c+'</option>';}).join('');
+  }
+
+  // apply filters
+  var search=(document.getElementById('exp-search')||{}).value||'';
+  var catF=(document.getElementById('exp-cat-filter')||{}).value||'';
+  var deductF=(document.getElementById('exp-deduct-filter')||{}).value||'';
+  var fromF=(document.getElementById('exp-from')||{}).value||'';
+  var toF=(document.getElementById('exp-to')||{}).value||'';
+
   var sorted=[].concat(expenses).sort(function(a,b){return b.date.localeCompare(a.date);});
-  document.getElementById('exp-table').innerHTML=sorted.length
-    ?sorted.map(function(e){var idx=expenses.indexOf(e);var db=e.deduct==='yes'?'badge-green':e.deduct==='partial'?'badge-amber':'badge-red';return'<tr><td>'+e.date+'</td><td>'+e.desc+'</td><td>'+e.cat+'</td><td><span class="badge '+db+'">'+e.deduct+'</span></td><td style="font-weight:600;color:#8b4343">- '+fmtD(e.amount)+'</td><td style="display:flex;gap:5px"><button class="btn-icon btn-save" style="font-size:10px;padding:3px 7px" onclick="openEdit(\'expenses\','+idx+')">Edit</button><button class="btn-icon" onclick="expenses.splice('+idx+',1);persist();renderExpenses()">&#x2715;</button></td></tr>';}).join('')
-    :'<tr><td colspan="6" class="empty">No expenses yet — start logging to maximize deductions</td></tr>';
+  var filtered=sorted.filter(function(e){
+    if(search&&e.desc.toLowerCase().indexOf(search.toLowerCase())===-1)return false;
+    if(catF&&e.cat!==catF)return false;
+    if(deductF&&e.deduct!==deductF)return false;
+    if(fromF&&e.date.slice(0,7)<fromF)return false;
+    if(toF&&e.date.slice(0,7)>toF)return false;
+    return true;
+  });
+
+  var filteredTotal=filtered.reduce(function(s,e){return s+Number(e.amount);},0);
+  var fs=document.getElementById('exp-filter-summary');
+  if(fs){fs.textContent=filtered.length!==expenses.length?'Showing '+filtered.length+' of '+expenses.length+' expenses — '+fmtD(filteredTotal)+' total':'';}
+
+  document.getElementById('exp-table').innerHTML=filtered.length
+    ?filtered.map(function(e){var idx=expenses.indexOf(e);var db=e.deduct==='yes'?'badge-green':e.deduct==='partial'?'badge-amber':'badge-red';return'<tr><td>'+e.date+'</td><td>'+e.desc+'</td><td>'+e.cat+'</td><td><span class="badge '+db+'">'+e.deduct+'</span></td><td style="font-weight:600;color:#8b4343">- '+fmtD(e.amount)+'</td><td style="display:flex;gap:5px"><button class="btn-icon btn-save" style="font-size:10px;padding:3px 7px" onclick="openEdit(\'expenses\','+idx+')">Edit</button><button class="btn-icon" onclick="expenses.splice('+idx+',1);persist();renderExpenses()">&#x2715;</button></td></tr>';}).join('')
+    :'<tr><td colspan="6" class="empty">'+(expenses.length?'No expenses match your filters':'No expenses yet — start logging to maximize deductions')+'</td></tr>';
+}
+function clearExpFilters(){
+  ['exp-search','exp-cat-filter','exp-deduct-filter','exp-from','exp-to'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+  renderExpenses();
 }
 function addExpense(){
   var d=document.getElementById('ex-desc').value.trim(),c=document.getElementById('ex-cat').value,a=document.getElementById('ex-amount').value,dt=document.getElementById('ex-date').value,de=document.getElementById('ex-deduct').value,no=document.getElementById('ex-notes').value.trim();
@@ -1035,10 +1098,44 @@ function renderBudget(){
     '<div class="metric-card"><div class="m-label">Income</div><div class="m-val">'+fmtD(t.svcInc)+'</div></div>'+
     '<div class="metric-card"><div class="m-label">Expenses</div><div class="m-val" style="color:#8b4343">'+fmtD(t.exp)+'</div></div>'+
     '<div class="metric-card accent"><div class="m-label">Net Profit</div><div class="m-val">'+fmtD(t.net)+'</div></div>';
+
+  // populate category dropdown
+  var catSel=document.getElementById('bud-cat-filter');
+  if(catSel){
+    var cats2=[...new Set(transactions.map(function(t){return t.cat;}))].sort();
+    var curCat=catSel.value;
+    catSel.innerHTML='<option value="">All categories</option>'+cats2.map(function(c){return'<option value="'+c+'"'+(c===curCat?' selected':'')+'>'+c+'</option>';}).join('');
+  }
+
+  // apply filters
+  var search=(document.getElementById('bud-search')||{}).value||'';
+  var typeF=(document.getElementById('bud-type-filter')||{}).value||'';
+  var catF=(document.getElementById('bud-cat-filter')||{}).value||'';
+  var fromF=(document.getElementById('bud-from')||{}).value||'';
+  var toF=(document.getElementById('bud-to')||{}).value||'';
+
   var sorted=[].concat(transactions).sort(function(a,b){return b.date.localeCompare(a.date);});
-  document.getElementById('budget-table').innerHTML=sorted.length
-    ?sorted.map(function(tr){var idx=transactions.indexOf(tr);return'<tr><td>'+tr.date+'</td><td style="max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+tr.desc+'</td><td>'+tr.cat+'</td><td><span class="badge '+(tr.type==='income'?'badge-green':'badge-red')+'">'+tr.type+'</span></td><td style="font-weight:600;color:'+(tr.type==='income'?'var(--ink)':'#8b4343')+'">'+(tr.type==='expense'?'- ':'')+fmtD(tr.amount)+'</td><td style="display:flex;gap:5px"><button class="btn-icon btn-save" style="font-size:10px;padding:3px 7px" onclick="openEdit(\'transactions\','+idx+')">Edit</button><button class="btn-icon" onclick="transactions.splice('+idx+',1);persist();renderBudget()">&#x2715;</button></td></tr>';}).join('')
-    :'<tr><td colspan="6" class="empty">No transactions yet</td></tr>';
+  var filtered=sorted.filter(function(tr){
+    if(search&&tr.desc.toLowerCase().indexOf(search.toLowerCase())===-1)return false;
+    if(typeF&&tr.type!==typeF)return false;
+    if(catF&&tr.cat!==catF)return false;
+    if(fromF&&tr.date.slice(0,7)<fromF)return false;
+    if(toF&&tr.date.slice(0,7)>toF)return false;
+    return true;
+  });
+
+  var filtInc=filtered.filter(function(r){return r.type==='income';}).reduce(function(s,r){return s+Number(r.amount);},0);
+  var filtExp=filtered.filter(function(r){return r.type==='expense';}).reduce(function(s,r){return s+Number(r.amount);},0);
+  var fs=document.getElementById('bud-filter-summary');
+  if(fs){fs.textContent=filtered.length!==transactions.length?'Showing '+filtered.length+' of '+transactions.length+' — Income: '+fmtD(filtInc)+' | Expenses: '+fmtD(filtExp)+' | Net: '+fmtD(filtInc-filtExp):'';}
+
+  document.getElementById('budget-table').innerHTML=filtered.length
+    ?filtered.map(function(tr){var idx=transactions.indexOf(tr);return'<tr><td>'+tr.date+'</td><td style="max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+tr.desc+'</td><td>'+tr.cat+'</td><td><span class="badge '+(tr.type==='income'?'badge-green':'badge-red')+'">'+tr.type+'</span></td><td style="font-weight:600;color:'+(tr.type==='income'?'var(--ink)':'#8b4343')+'">'+(tr.type==='expense'?'- ':'')+fmtD(tr.amount)+'</td><td style="display:flex;gap:5px"><button class="btn-icon btn-save" style="font-size:10px;padding:3px 7px" onclick="openEdit(\'transactions\','+idx+')">Edit</button><button class="btn-icon" onclick="transactions.splice('+idx+',1);persist();renderBudget()">&#x2715;</button></td></tr>';}).join('')
+    :'<tr><td colspan="6" class="empty">'+(transactions.length?'No transactions match your filters':'No transactions yet')+'</td></tr>';
+}
+function clearBudFilters(){
+  ['bud-search','bud-type-filter','bud-cat-filter','bud-from','bud-to'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+  renderBudget();
 }
 function addTransaction(){
   var d=document.getElementById('b-desc').value.trim(),ty=document.getElementById('b-type').value,c=document.getElementById('b-cat').value,a=document.getElementById('b-amount').value,dt=document.getElementById('b-date').value;
@@ -1460,7 +1557,10 @@ function wfGuessCategory(desc){
 }
 
 function wfShowPreview(){
-  wfRenderRows(wfParsed);
+  // default to expenses only since Square handles income
+  document.getElementById('wf-type-filter').value='expense';
+  wfParsed.forEach(function(r){if(r.type==='income')r.include=false;});
+  wfFilter('');
   document.getElementById('wf-preview').style.display='block';
   document.getElementById('wf-dropzone').style.display='none';
   wfUpdateSummary();
