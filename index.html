@@ -1110,7 +1110,10 @@ function renderExpenses(){
   // build period selector from available months
   var periodSel=document.getElementById('exp-period-sel');
   var curMo=new Date().toISOString().slice(0,7);
-  var allMonths=[...new Set([curMo].concat(expenses.map(function(e){return e.date.slice(0,7);})))].sort().reverse();
+  var monthSet2={};
+  monthSet2[curMo]=true;
+  expenses.forEach(function(e){if(e.date&&e.date.length>=7)monthSet2[e.date.slice(0,7)]=true;});
+  var allMonths=Object.keys(monthSet2).sort().reverse();
   var prevSel=periodSel?periodSel.value:'';
   var selPeriod=prevSel&&prevSel!==''?prevSel:curMo;
   if(periodSel){
@@ -1221,7 +1224,12 @@ function renderBudget(){
   // build period selector
   var periodSel=document.getElementById('bud-period-sel');
   var curMo=new Date().toISOString().slice(0,7);
-  var allMonths=[...new Set([curMo].concat(transactions.map(function(t){return t.date.slice(0,7);})))].sort().reverse();
+  // scan ALL data sources to build month list
+  var monthSet={};
+  monthSet[curMo]=true;
+  transactions.forEach(function(t){if(t.date&&t.date.length>=7)monthSet[t.date.slice(0,7)]=true;});
+  expenses.forEach(function(e){if(e.date&&e.date.length>=7)monthSet[e.date.slice(0,7)]=true;});
+  var allMonths=Object.keys(monthSet).sort().reverse();
   var prevSel=periodSel?periodSel.value:'';
   var selPeriod=prevSel&&prevSel!==''?prevSel:curMo;
   if(periodSel){
