@@ -437,7 +437,13 @@ input:focus,select:focus{border-color:var(--forest)}
 
   <!-- EXPENSES -->
   <div id="page-expenses" class="page">
-    <div class="page-header"><h1>Expenses</h1><p>Every deductible cost tracked. Don't leave money on the table at tax time.</p></div>
+    <div class="page-header" style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <div><h1>Expenses</h1><p>Every deductible cost tracked. Don't leave money on the table at tax time.</p></div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+        <label style="font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink-muted);font-weight:600">Viewing</label>
+        <select id="exp-period-sel" onchange="renderExpenses()" style="font-size:12px;padding:6px 12px;min-width:130px;font-weight:500"></select>
+      </div>
+    </div>
     <div class="metric-row" id="exp-metrics"></div>
     <div class="card">
       <div class="card-header"><div class="card-title">Log an expense</div></div>
@@ -1094,14 +1100,37 @@ function setBudPage(p){budPage=p;renderBudget();}
 function renderExpenses(){
   var total=expenses.reduce(function(s,e){return s+Number(e.amount);},0);
   var deduct=expenses.filter(function(e){return e.deduct==='yes';}).reduce(function(s,e){return s+Number(e.amount);},0);
-  var mo=new Date().toISOString().slice(0,7);
-  var mExp=expenses.filter(function(e){return e.date.startsWith(mo);}).reduce(function(s,e){return s+Number(e.amount);},0);
-  var cm={};expenses.forEach(function(e){cm[e.cat]=(cm[e.cat]||0)+Number(e.amount);});
+
+  // build period selector from available months
+  var periodSel=document.getElementById('exp-period-sel');
+  var allMonths=[...new Set(expenses.map(function(e){return e.date.slice(0,7);}))].sort().reverse();
+  var curMo=new Date().toISOString().slice(0,7);
+  var selPeriod=periodSel?periodSel.value:'';
+  if(!selPeriod||selPeriod===''){selPeriod=curMo;}
+  if(periodSel){
+    var opts='<option value="all"'+(selPeriod==='all'?' selected':'')+'>All time</option>'+
+      allMonths.map(function(m){
+        var d=new Date(m+'-01');
+        var label=d.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+        return'<option value="'+m+'"'+(m===selPeriod?' selected':'')+'>'+label+'</option>';
+      }).join('');
+    periodSel.innerHTML=opts;
+    selPeriod=periodSel.value;
+  }
+
+  // filter expenses for selected period
+  var isAll=selPeriod==='all';
+  var periodExp=isAll?expenses:expenses.filter(function(e){return e.date.startsWith(selPeriod);});
+  var periodTotal=periodExp.reduce(function(s,e){return s+Number(e.amount);},0);
+  var periodDeduct=periodExp.filter(function(e){return e.deduct==='yes';}).reduce(function(s,e){return s+Number(e.amount);},0);
+  var cm={};periodExp.forEach(function(e){cm[e.cat]=(cm[e.cat]||0)+Number(e.amount);});
   var top=Object.keys(cm).sort(function(a,b){return cm[b]-cm[a];})[0]||'—';
+  var periodLabel=isAll?'All time':new Date(selPeriod+'-01').toLocaleDateString('en-US',{month:'long',year:'numeric'});
+
   document.getElementById('exp-metrics').innerHTML=
-    '<div class="metric-card accent"><div class="m-label">This Month</div><div class="m-val">'+fmtD(mExp)+'</div><div class="m-sub">expenses</div></div>'+
+    '<div class="metric-card accent"><div class="m-label">'+periodLabel+'</div><div class="m-val">'+fmtD(periodTotal)+'</div><div class="m-sub">expenses</div></div>'+
     '<div class="metric-card"><div class="m-label">All-time Total</div><div class="m-val" style="color:#8b4343">'+fmt(total)+'</div></div>'+
-    '<div class="metric-card"><div class="m-label">Tax Deductible</div><div class="m-val">'+fmt(deduct)+'</div><div class="m-sub">potential savings</div></div>'+
+    '<div class="metric-card"><div class="m-label">Tax Deductible</div><div class="m-val">'+fmt(periodDeduct)+'</div><div class="m-sub">'+periodLabel+'</div></div>'+
     '<div class="metric-card"><div class="m-label">Top Category</div><div class="m-val" style="font-size:13px;padding-top:3px">'+top+'</div></div>';
 
   // populate category dropdown
