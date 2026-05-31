@@ -230,6 +230,10 @@ input:focus,select:focus{border-color:var(--forest)}
       <svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
       <span>Transactions</span>
     </button>
+    <button class="nav-item" onclick="showPage('overhead',this)">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span>Business Overhead</span>
+    </button>
     <button class="nav-item" onclick="showPage('booking',this)">
       <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
       <span>Booking</span>
@@ -693,6 +697,54 @@ input:focus,select:focus{border-color:var(--forest)}
     </div>
   </div>
 
+  <!-- BUSINESS OVERHEAD -->
+  <div id="page-overhead" class="page">
+    <div class="page-header"><h1>Business Overhead</h1><p>Everything it costs to operate — your master list of recurring and fixed expenses. For reference only, not included in P&amp;L.</p></div>
+    <div class="metric-row" id="overhead-metrics"></div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Add an overhead item</div></div>
+      <div class="form-row" style="margin-bottom:0">
+        <div class="form-group"><label>Item name</label><input id="oh-name" placeholder="e.g. Booth rent"></div>
+        <div class="form-group"><label>Category</label>
+          <select id="oh-cat">
+            <option>Rent &amp; space</option>
+            <option>Supplies &amp; products</option>
+            <option>Software &amp; subscriptions</option>
+            <option>Insurance</option>
+            <option>Education &amp; training</option>
+            <option>Marketing &amp; advertising</option>
+            <option>Equipment &amp; tools</option>
+            <option>Phone &amp; internet</option>
+            <option>Professional services</option>
+            <option>Licensing &amp; permits</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Amount ($)</label><input id="oh-amount" type="number" placeholder="0"></div>
+        <div class="form-group"><label>Frequency</label>
+          <select id="oh-freq">
+            <option value="monthly">Monthly</option>
+            <option value="weekly">Weekly</option>
+            <option value="annually">Annually</option>
+            <option value="per use">Per use / variable</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Notes</label><input id="oh-notes" placeholder="Optional"></div>
+        <button class="btn btn-primary" onclick="addOverhead()">Add</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">All overhead items</div>
+        <button class="btn btn-ghost" onclick="exportCSV('overhead')" style="display:flex;align-items:center;gap:5px;font-size:10px">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          CSV
+        </button>
+      </div>
+      <table><thead><tr><th>Item</th><th>Category</th><th>Amount</th><th>Frequency</th><th>Est. monthly</th><th>Notes</th><th></th></tr></thead><tbody id="overhead-table"></tbody></table>
+    </div>
+  </div>
+
   <!-- BOOKING -->
   <div id="page-booking" class="page">
     <div class="page-header"><h1>Booking</h1><p>Your Acuity scheduling — connected to your dashboard.</p></div>
@@ -801,7 +853,7 @@ var MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','D
 function persist(){
   save('clients',clients);save('inventory',inventory);save('transactions',transactions);
   save('tips',tips);save('eduEvents',eduEvents);save('expenses',expenses);
-  save('goals',goals);save('cats',cats);
+  save('goals',goals);save('cats',cats);save('overhead',overhead);
   var dot=document.getElementById('save-dot');
   if(dot){dot.style.background='#B8AFA3';setTimeout(function(){dot.style.background='#4a8c6e';},900);}
 }
@@ -846,7 +898,7 @@ function showPage(id,el){
   document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active');});
   document.getElementById('page-'+id).classList.add('active');
   if(el)el.classList.add('active');
-  var r={dashboard:renderDash,analytics:renderAnalytics,goals:renderGoals,clients:renderClients,tips:renderTips,education:renderEdu,expenses:renderExpenses,inventory:renderInv,budget:renderBudget,square:renderSquare,wellsfargo:renderWellsFargo,settings:renderSettings};
+  var r={dashboard:renderDash,analytics:renderAnalytics,goals:renderGoals,clients:renderClients,tips:renderTips,education:renderEdu,expenses:renderExpenses,inventory:renderInv,budget:renderBudget,overhead:renderOverhead,square:renderSquare,wellsfargo:renderWellsFargo,settings:renderSettings};
   if(r[id])r[id]();
 }
 
@@ -1400,6 +1452,12 @@ function exportCSV(type){
     downloadCSV('Wandaful_Transactions_'+now+'.csv',
       [['Date','Description','Category','Type','Amount']].concat(
         [].concat(transactions).sort(function(a,b){return b.date.localeCompare(a.date);}).map(function(t){return[t.date,t.desc,t.cat,t.type,t.amount];})));
+  } else if(type==='overhead'){
+    downloadCSV('Wandaful_Overhead_'+now+'.csv',
+      [['Item','Category','Amount','Frequency','Est Monthly','Notes']].concat(
+        [].concat(overhead).sort(function(a,b){return a.cat.localeCompare(b.cat);}).map(function(o){
+          return[o.name,o.cat,o.amount,o.freq,o.freq==='per use'?'variable':ohMonthly(o.amount,o.freq),o.notes||''];
+        })));
   }
 }
 
@@ -1832,6 +1890,52 @@ function renderWfHistory(){
   '</tbody></table>';
 }
 
+// ── BUSINESS OVERHEAD ────────────────────────────────────────────────
+var overhead=load('overhead',[]);
+function ohMonthly(amount,freq){
+  var a=Number(amount);
+  if(freq==='monthly')return a;
+  if(freq==='weekly')return Math.round(a*52/12*100)/100;
+  if(freq==='annually')return Math.round(a/12*100)/100;
+  return a;
+}
+function renderOverhead(){
+  var totalMo=overhead.reduce(function(s,o){return s+(o.freq==='per use'?0:ohMonthly(o.amount,o.freq));},0);
+  var topCat='—';var byCat={};
+  overhead.forEach(function(o){byCat[o.cat]=(byCat[o.cat]||0)+ohMonthly(o.amount,o.freq);});
+  var catKeys=Object.keys(byCat).sort(function(a,b){return byCat[b]-byCat[a];});
+  if(catKeys.length)topCat=catKeys[0];
+  document.getElementById('overhead-metrics').innerHTML=
+    '<div class="metric-card accent"><div class="m-label">Est. Monthly Cost</div><div class="m-val">'+fmtD(totalMo)+'</div><div class="m-sub">to operate</div></div>'+
+    '<div class="metric-card"><div class="m-label">Est. Annual Cost</div><div class="m-val">'+fmt(totalMo*12)+'</div></div>'+
+    '<div class="metric-card"><div class="m-label">Line Items</div><div class="m-val">'+overhead.length+'</div></div>'+
+    '<div class="metric-card"><div class="m-label">Top Category</div><div class="m-val" style="font-size:13px;padding-top:3px">'+topCat+'</div></div>';
+  var sorted=[].concat(overhead).sort(function(a,b){return a.cat.localeCompare(b.cat)||a.name.localeCompare(b.name);});
+  var lastCat='';
+  document.getElementById('overhead-table').innerHTML=sorted.length
+    ?sorted.map(function(o){
+        var idx=overhead.indexOf(o);
+        var mo=ohMonthly(o.amount,o.freq);
+        var moLabel=o.freq==='per use'?'<span style="color:var(--ink-muted);font-size:10px">variable</span>':fmtD(mo);
+        var freqBadge=o.freq==='monthly'?'badge-green':o.freq==='weekly'?'badge-amber':o.freq==='annually'?'badge-ink':'badge-red';
+        var catHeader='';
+        if(o.cat!==lastCat){lastCat=o.cat;catHeader='<tr><td colspan="7" style="background:var(--cream-light);font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-muted);font-weight:600;padding:8px 10px">'+o.cat+'</td></tr>';}
+        return catHeader+'<tr><td style="font-weight:500">'+o.name+'</td><td style="color:var(--ink-muted)">'+o.cat+'</td><td style="font-weight:600">'+fmtD(o.amount)+'</td><td><span class="badge '+freqBadge+'">'+o.freq+'</span></td><td style="font-weight:600">'+moLabel+'</td><td style="color:var(--ink-muted)">'+(o.notes||'—')+'</td><td><button class="btn-icon" onclick="overhead.splice('+idx+',1);persist();renderOverhead()">&#x2715;</button></td></tr>';
+      }).join('')
+    :'<tr><td colspan="7" class="empty">No overhead items yet — add everything it costs to run your business</td></tr>';
+}
+function addOverhead(){
+  var n=document.getElementById('oh-name').value.trim();
+  var c=document.getElementById('oh-cat').value;
+  var a=document.getElementById('oh-amount').value;
+  var f=document.getElementById('oh-freq').value;
+  var no=document.getElementById('oh-notes').value.trim();
+  if(!n||!a)return alert('Item name and amount required.');
+  overhead.push({name:n,cat:c,amount:Number(a),freq:f,notes:no});
+  ['oh-name','oh-amount','oh-notes'].forEach(function(id){document.getElementById(id).value='';});
+  persist();renderOverhead();
+}
+
 // ── BACKUP & SYNC ─────────────────────────────────────────────────────
 function exportAllData(){
   var backup={
@@ -1847,7 +1951,8 @@ function exportAllData(){
     cats:cats,
     themeSettings:themeSettings,
     sqImportHistory:sqImportHistory,
-    wfImportHistory:wfImportHistory
+    wfImportHistory:wfImportHistory,
+    overhead:overhead
   };
   var json=JSON.stringify(backup,null,2);
   var blob=new Blob([json],{type:'application/json'});
@@ -1882,6 +1987,7 @@ function importAllData(input){
       if(data.themeSettings){themeSettings=data.themeSettings;save('themeSettings',themeSettings);}
       if(data.sqImportHistory){sqImportHistory=data.sqImportHistory;save('sqImportHistory',sqImportHistory);}
       if(data.wfImportHistory){wfImportHistory=data.wfImportHistory;save('wfImportHistory',wfImportHistory);}
+      if(data.overhead){overhead=data.overhead;save('overhead',overhead);}
       // re-render everything
       refreshAllSelects();
       restoreTheme();
