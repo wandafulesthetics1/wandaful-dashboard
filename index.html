@@ -230,10 +230,6 @@ input:focus,select:focus{border-color:var(--forest)}
       <svg viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
       <span>Transactions</span>
     </button>
-    <button class="nav-item" onclick="showPage('overhead',this)">
-      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-      <span>Business Overhead</span>
-    </button>
     <button class="nav-item" onclick="showPage('booking',this)">
       <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
       <span>Booking</span>
@@ -697,60 +693,6 @@ input:focus,select:focus{border-color:var(--forest)}
     </div>
   </div>
 
-  <!-- BUSINESS OVERHEAD -->
-  <div id="page-overhead" class="page">
-    <div class="page-header"><h1>Business Overhead</h1><p>Everything it costs to operate — your master list of recurring and fixed expenses. For reference only, not included in P&amp;L.</p></div>
-    <div class="metric-row" id="overhead-metrics"></div>
-    <div class="card">
-      <div class="card-header"><div class="card-title">Add an overhead item</div></div>
-      <div class="form-row" style="margin-bottom:0">
-        <div class="form-group"><label>Item name</label><input id="oh-name" placeholder="e.g. Booth rent"></div>
-        <div class="form-group"><label>Category</label>
-          <select id="oh-cat">
-            <option>Rent &amp; space</option>
-            <option>Supplies &amp; products</option>
-            <option>Software &amp; subscriptions</option>
-            <option>Insurance</option>
-            <option>Education &amp; training</option>
-            <option>Marketing &amp; advertising</option>
-            <option>Equipment &amp; tools</option>
-            <option>Phone &amp; internet</option>
-            <option>Professional services</option>
-            <option>Licensing &amp; permits</option>
-            <option>Other</option>
-          </select>
-        </div>
-        <div class="form-group"><label>Amount ($)</label><input id="oh-amount" type="number" placeholder="0"></div>
-        <div class="form-group"><label>Frequency</label>
-          <select id="oh-freq">
-            <option value="monthly">Monthly</option>
-            <option value="weekly">Weekly</option>
-            <option value="annually">Annually</option>
-            <option value="per use">Per use / variable</option>
-          </select>
-        </div>
-        <div class="form-group"><label>Notes</label><input id="oh-notes" placeholder="Optional"></div>
-        <button class="btn btn-primary" onclick="addOverhead()">Add</button>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">All overhead items</div>
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-ghost" onclick="exportCSV('overhead')" style="display:flex;align-items:center;gap:5px;font-size:10px">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            CSV
-          </button>
-          <button class="btn btn-primary" onclick="exportOverheadPDF()" style="display:flex;align-items:center;gap:6px">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Export PDF
-          </button>
-        </div>
-      </div>
-      <table><thead><tr><th>Item</th><th>Category</th><th>Amount</th><th>Frequency</th><th>Est. monthly</th><th>Notes</th><th></th></tr></thead><tbody id="overhead-table"></tbody></table>
-    </div>
-  </div>
-
   <!-- BOOKING -->
   <div id="page-booking" class="page">
     <div class="page-header"><h1>Booking</h1><p>Your Acuity scheduling — connected to your dashboard.</p></div>
@@ -859,7 +801,7 @@ var MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','D
 function persist(){
   save('clients',clients);save('inventory',inventory);save('transactions',transactions);
   save('tips',tips);save('eduEvents',eduEvents);save('expenses',expenses);
-  save('goals',goals);save('cats',cats);save('overhead',overhead);
+  save('goals',goals);save('cats',cats);
   var dot=document.getElementById('save-dot');
   if(dot){dot.style.background='#B8AFA3';setTimeout(function(){dot.style.background='#4a8c6e';},900);}
 }
@@ -904,7 +846,7 @@ function showPage(id,el){
   document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active');});
   document.getElementById('page-'+id).classList.add('active');
   if(el)el.classList.add('active');
-  var r={dashboard:renderDash,analytics:renderAnalytics,goals:renderGoals,clients:renderClients,tips:renderTips,education:renderEdu,expenses:renderExpenses,inventory:renderInv,budget:renderBudget,overhead:renderOverhead,square:renderSquare,wellsfargo:renderWellsFargo,settings:renderSettings};
+  var r={dashboard:renderDash,analytics:renderAnalytics,goals:renderGoals,clients:renderClients,tips:renderTips,education:renderEdu,expenses:renderExpenses,inventory:renderInv,budget:renderBudget,square:renderSquare,wellsfargo:renderWellsFargo,settings:renderSettings};
   if(r[id])r[id]();
 }
 
@@ -1172,8 +1114,8 @@ function renderExpenses(){
   monthSet2[curMo]=true;
   expenses.forEach(function(e){if(e.date&&e.date.length>=7)monthSet2[e.date.slice(0,7)]=true;});
   var allMonths=Object.keys(monthSet2).sort().reverse();
-  // simple: use data-selected attribute to persist choice, default to all time
-  var selPeriod=periodSel?periodSel.getAttribute('data-sel')||'all':'all';
+  // simple: use data-selected attribute to persist choice, default to curMo
+  var selPeriod=periodSel?periodSel.getAttribute('data-sel')||curMo:curMo;
   if(periodSel){
     var opts='<option value="all"'+(selPeriod==='all'?' selected':'')+'>All time</option>'+
       allMonths.map(function(m){
@@ -1187,26 +1129,14 @@ function renderExpenses(){
     periodSel.setAttribute('data-sel',selPeriod);
   }
 
-  // apply filters (same as table)
-  var search2=(document.getElementById('exp-search')||{}).value||'';
-  var catF2=(document.getElementById('exp-cat-filter')||{}).value||'';
-  var deductF2=(document.getElementById('exp-deduct-filter')||{}).value||'';
-  var fromF2=(document.getElementById('exp-from')||{}).value||'';
-  var toF2=(document.getElementById('exp-to')||{}).value||'';
-
-  // filter expenses for selected period — use filter bar if set, else use viewing dropdown
-  var isAll=selPeriod==='all'&&!fromF2&&!toF2;
-  var periodExp=expenses.filter(function(e){
-    if(fromF2&&e.date.slice(0,7)<fromF2)return false;
-    if(toF2&&e.date.slice(0,7)>toF2)return false;
-    if(!fromF2&&!toF2&&selPeriod!=='all'&&!e.date.startsWith(selPeriod))return false;
-    return true;
-  });
+  // filter expenses for selected period
+  var isAll=selPeriod==='all';
+  var periodExp=isAll?expenses:expenses.filter(function(e){return e.date.startsWith(selPeriod);});
   var periodTotal=periodExp.reduce(function(s,e){return s+Number(e.amount);},0);
   var periodDeduct=periodExp.filter(function(e){return e.deduct==='yes';}).reduce(function(s,e){return s+Number(e.amount);},0);
   var cm={};periodExp.forEach(function(e){cm[e.cat]=(cm[e.cat]||0)+Number(e.amount);});
   var top=Object.keys(cm).sort(function(a,b){return cm[b]-cm[a];})[0]||'—';
-  var periodLabel=isAll?'All time':fromF2&&toF2&&fromF2===toF2?new Date(fromF2+'-01').toLocaleDateString('en-US',{month:'long',year:'numeric'}):fromF2||toF2?'Custom range':selPeriod==='all'?'All time':new Date(selPeriod+'-01').toLocaleDateString('en-US',{month:'long',year:'numeric'});
+  var periodLabel=isAll?'All time':new Date(selPeriod+'-01').toLocaleDateString('en-US',{month:'long',year:'numeric'});
 
   document.getElementById('exp-metrics').innerHTML=
     '<div class="metric-card accent"><div class="m-label">'+periodLabel+'</div><div class="m-val">'+fmtD(periodTotal)+'</div><div class="m-sub">expenses</div></div>'+
@@ -1298,7 +1228,7 @@ function renderBudget(){
   transactions.forEach(function(t){if(t.date&&t.date.length>=7)monthSet[t.date.slice(0,7)]=true;});
   expenses.forEach(function(e){if(e.date&&e.date.length>=7)monthSet[e.date.slice(0,7)]=true;});
   var allMonths=Object.keys(monthSet).sort().reverse();
-  // simple: use data-selected attribute to persist choice, default to current month
+  // simple: use data-selected attribute to persist choice, default to curMo
   var selPeriod=periodSel?periodSel.getAttribute('data-sel')||curMo:curMo;
   if(periodSel){
     var opts='<option value="all"'+(selPeriod==='all'?' selected':'')+'>All time</option>'+
@@ -1470,12 +1400,6 @@ function exportCSV(type){
     downloadCSV('Wandaful_Transactions_'+now+'.csv',
       [['Date','Description','Category','Type','Amount']].concat(
         [].concat(transactions).sort(function(a,b){return b.date.localeCompare(a.date);}).map(function(t){return[t.date,t.desc,t.cat,t.type,t.amount];})));
-  } else if(type==='overhead'){
-    downloadCSV('Wandaful_Overhead_'+now+'.csv',
-      [['Item','Category','Amount','Frequency','Est Monthly','Notes']].concat(
-        [].concat(overhead).sort(function(a,b){return a.cat.localeCompare(b.cat);}).map(function(o){
-          return[o.name,o.cat,o.amount,o.freq,o.freq==='per use'?'variable':ohMonthly(o.amount,o.freq),o.notes||''];
-        })));
   }
 }
 
@@ -1908,159 +1832,6 @@ function renderWfHistory(){
   '</tbody></table>';
 }
 
-// ── BUSINESS OVERHEAD ────────────────────────────────────────────────
-var overhead=load('overhead',[]);
-function ohMonthly(amount,freq){
-  var a=Number(amount);
-  if(freq==='monthly')return a;
-  if(freq==='weekly')return Math.round(a*52/12*100)/100;
-  if(freq==='annually')return Math.round(a/12*100)/100;
-  return a;
-}
-function renderOverhead(){
-  var totalMo=overhead.reduce(function(s,o){return s+(o.freq==='per use'?0:ohMonthly(o.amount,o.freq));},0);
-  var topCat='—';var byCat={};
-  overhead.forEach(function(o){byCat[o.cat]=(byCat[o.cat]||0)+ohMonthly(o.amount,o.freq);});
-  var catKeys=Object.keys(byCat).sort(function(a,b){return byCat[b]-byCat[a];});
-  if(catKeys.length)topCat=catKeys[0];
-  document.getElementById('overhead-metrics').innerHTML=
-    '<div class="metric-card accent"><div class="m-label">Est. Monthly Cost</div><div class="m-val">'+fmtD(totalMo)+'</div><div class="m-sub">to operate</div></div>'+
-    '<div class="metric-card"><div class="m-label">Est. Annual Cost</div><div class="m-val">'+fmt(totalMo*12)+'</div></div>'+
-    '<div class="metric-card"><div class="m-label">Line Items</div><div class="m-val">'+overhead.length+'</div></div>'+
-    '<div class="metric-card"><div class="m-label">Top Category</div><div class="m-val" style="font-size:13px;padding-top:3px">'+topCat+'</div></div>';
-  var sorted=[].concat(overhead).sort(function(a,b){return a.cat.localeCompare(b.cat)||a.name.localeCompare(b.name);});
-  var lastCat='';
-  document.getElementById('overhead-table').innerHTML=sorted.length
-    ?sorted.map(function(o){
-        var idx=overhead.indexOf(o);
-        var mo=ohMonthly(o.amount,o.freq);
-        var moLabel=o.freq==='per use'?'<span style="color:var(--ink-muted);font-size:10px">variable</span>':fmtD(mo);
-        var freqBadge=o.freq==='monthly'?'badge-green':o.freq==='weekly'?'badge-amber':o.freq==='annually'?'badge-ink':'badge-red';
-        var catHeader='';
-        if(o.cat!==lastCat){lastCat=o.cat;catHeader='<tr><td colspan="7" style="background:var(--cream-light);font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-muted);font-weight:600;padding:8px 10px">'+o.cat+'</td></tr>';}
-        return catHeader+'<tr><td style="font-weight:500">'+o.name+'</td><td style="color:var(--ink-muted)">'+o.cat+'</td><td style="font-weight:600">'+fmtD(o.amount)+'</td><td><span class="badge '+freqBadge+'">'+o.freq+'</span></td><td style="font-weight:600">'+moLabel+'</td><td style="color:var(--ink-muted)">'+(o.notes||'—')+'</td><td><button class="btn-icon" onclick="overhead.splice('+idx+',1);persist();renderOverhead()">&#x2715;</button></td></tr>';
-      }).join('')
-    :'<tr><td colspan="7" class="empty">No overhead items yet — add everything it costs to run your business</td></tr>';
-}
-function addOverhead(){
-  var n=document.getElementById('oh-name').value.trim();
-  var c=document.getElementById('oh-cat').value;
-  var a=document.getElementById('oh-amount').value;
-  var f=document.getElementById('oh-freq').value;
-  var no=document.getElementById('oh-notes').value.trim();
-  if(!n||!a)return alert('Item name and amount required.');
-  overhead.push({name:n,cat:c,amount:Number(a),freq:f,notes:no});
-  ['oh-name','oh-amount','oh-notes'].forEach(function(id){document.getElementById(id).value='';});
-  persist();renderOverhead();
-}
-
-function exportOverheadPDF(){
-  var jsPDF=window.jspdf.jsPDF;
-  var doc=new jsPDF({orientation:'portrait',unit:'pt',format:'letter'});
-  var W=doc.internal.pageSize.getWidth();
-  var now=new Date();
-
-  // totals
-  var totalMo=overhead.reduce(function(s,o){return s+(o.freq==='per use'?0:ohMonthly(o.amount,o.freq));},0);
-  var totalAnnual=totalMo*12;
-
-  // header
-  doc.setFillColor(28,28,28);doc.rect(0,0,W,70,'F');
-  doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(21);
-  doc.text('WANDAFUL ESTHETICS',W/2,29,{align:'center'});
-  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(180,175,163);
-  doc.text('BUSINESS OVERHEAD REPORT',W/2,44,{align:'center'});
-  doc.text('Everything it costs to operate your business',W/2,58,{align:'center'});
-  doc.setTextColor(120,114,104);doc.setFontSize(9);
-  doc.text('Generated: '+now.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'}),40,88);
-  doc.setDrawColor(184,175,163);doc.setLineWidth(0.5);doc.line(40,96,W-40,96);
-
-  // summary boxes
-  var bw=(W-80-12)/3;
-  [{label:'EST. MONTHLY COST',val:fmtD(totalMo)},{label:'EST. ANNUAL COST',val:fmt(totalAnnual)},{label:'LINE ITEMS',val:String(overhead.length)}].forEach(function(b,i){
-    var x=40+(bw+6)*i;
-    doc.setFillColor(28,28,28);doc.roundedRect(x,104,bw,48,4,4,'F');
-    doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(6.5);
-    doc.text(b.label,x+bw/2,117,{align:'center'});
-    doc.setFontSize(13);doc.text(b.val,x+bw/2,136,{align:'center'});
-  });
-
-  // section header
-  var sy=168;
-  doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(28,28,28);
-  doc.text('Overhead by Category',40,sy);
-  doc.setDrawColor(184,175,163);doc.line(40,sy+5,W-40,sy+5);
-
-  // group by category
-  var cats={};
-  overhead.forEach(function(o){if(!cats[o.cat])cats[o.cat]=[];cats[o.cat].push(o);});
-  var rows=[];
-  var catTotals=[];
-  Object.keys(cats).sort().forEach(function(cat){
-    var items=cats[cat];
-    var catMo=items.reduce(function(s,o){return s+(o.freq==='per use'?0:ohMonthly(o.amount,o.freq));},0);
-    catTotals.push([cat,'','','',fmtD(catMo)]);
-    items.forEach(function(o){
-      var mo=o.freq==='per use'?'variable':fmtD(ohMonthly(o.amount,o.freq));
-      rows.push(['  '+o.name,o.cat,fmtD(o.amount),o.freq,mo]);
-    });
-  });
-
-  // build combined rows with category subtotals
-  var tableRows=[];
-  Object.keys(cats).sort().forEach(function(cat){
-    var items=cats[cat];
-    var catMo=items.reduce(function(s,o){return s+(o.freq==='per use'?0:ohMonthly(o.amount,o.freq));},0);
-    // category header row
-    tableRows.push({type:'cat',data:[cat,'','','',fmtD(catMo)+'/mo']});
-    items.forEach(function(o){
-      var mo=o.freq==='per use'?'variable':fmtD(ohMonthly(o.amount,o.freq));
-      tableRows.push({type:'item',data:[o.name,fmtD(o.amount),o.freq,mo,o.notes||'']});
-    });
-  });
-
-  // total row
-  tableRows.push({type:'total',data:['TOTAL MONTHLY COST','','','',fmtD(totalMo)+'/mo']});
-  tableRows.push({type:'total',data:['TOTAL ANNUAL COST','','','',fmt(totalAnnual)+'/yr']});
-
-  doc.autoTable({
-    startY:sy+12,
-    head:[['Item','Amount','Frequency','Est. Monthly','Notes']],
-    body:overhead.length?[].concat(
-      Object.keys(cats).sort().reduce(function(arr,cat){
-        var items=cats[cat];
-        var catMo=items.reduce(function(s,o){return s+(o.freq==='per use'?0:ohMonthly(o.amount,o.freq));},0);
-        // add category subtotal header
-        arr.push([{content:cat.toUpperCase()+' — '+fmtD(catMo)+'/mo',colSpan:5,styles:{fillColor:[232,223,210],textColor:[28,28,28],fontStyle:'bold',fontSize:8}}]);
-        items.sort(function(a,b){return a.name.localeCompare(b.name);}).forEach(function(o){
-          var mo=o.freq==='per use'?'variable':fmtD(ohMonthly(o.amount,o.freq));
-          arr.push([o.name,fmtD(o.amount),o.freq,mo,o.notes||'—']);
-        });
-        return arr;
-      },[]),
-      // totals
-      [{content:'',colSpan:5,styles:{fillColor:[255,255,255],cellPadding:3}}],
-      [{content:'ESTIMATED MONTHLY TOTAL',colSpan:3,styles:{fontStyle:'bold',fontSize:9,fillColor:[28,28,28],textColor:[255,255,255]}},{content:fmtD(totalMo)+' / month',colSpan:2,styles:{fontStyle:'bold',fontSize:9,fillColor:[28,28,28],textColor:[255,255,255],halign:'right'}}],
-      [{content:'ESTIMATED ANNUAL TOTAL',colSpan:3,styles:{fontStyle:'bold',fontSize:9,fillColor:[47,62,52],textColor:[255,255,255]}},{content:fmt(totalAnnual)+' / year',colSpan:2,styles:{fontStyle:'bold',fontSize:9,fillColor:[47,62,52],textColor:[255,255,255],halign:'right'}}]
-    ):[['No overhead items logged yet','','','','']],
-    margin:{left:40,right:40},
-    headStyles:{fillColor:[28,28,28],textColor:[255,255,255],fontSize:8,fontStyle:'bold'},
-    bodyStyles:{fontSize:9},
-    alternateRowStyles:{fillColor:[246,242,236]},
-    columnStyles:{0:{cellWidth:150},1:{halign:'right',cellWidth:65},2:{cellWidth:75},3:{halign:'right',cellWidth:70},4:{cellWidth:'auto'}},
-    styles:{lineColor:[232,223,210],lineWidth:0.3}
-  });
-
-  // footer
-  var pY=doc.internal.pageSize.getHeight()-20;
-  doc.setDrawColor(184,175,163);doc.line(40,pY-5,W-40,pY-5);
-  doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(180,175,163);
-  doc.text('Wandaful Esthetics — Business Overhead Report',40,pY);
-  doc.text('Page 1 of 1',W-40,pY,{align:'right'});
-
-  doc.save('Wandaful_Overhead_'+now.getFullYear()+'.pdf');
-}
-
 // ── BACKUP & SYNC ─────────────────────────────────────────────────────
 function exportAllData(){
   var backup={
@@ -2076,8 +1847,7 @@ function exportAllData(){
     cats:cats,
     themeSettings:themeSettings,
     sqImportHistory:sqImportHistory,
-    wfImportHistory:wfImportHistory,
-    overhead:overhead
+    wfImportHistory:wfImportHistory
   };
   var json=JSON.stringify(backup,null,2);
   var blob=new Blob([json],{type:'application/json'});
@@ -2112,7 +1882,6 @@ function importAllData(input){
       if(data.themeSettings){themeSettings=data.themeSettings;save('themeSettings',themeSettings);}
       if(data.sqImportHistory){sqImportHistory=data.sqImportHistory;save('sqImportHistory',sqImportHistory);}
       if(data.wfImportHistory){wfImportHistory=data.wfImportHistory;save('wfImportHistory',wfImportHistory);}
-      if(data.overhead){overhead=data.overhead;save('overhead',overhead);}
       // re-render everything
       refreshAllSelects();
       restoreTheme();
