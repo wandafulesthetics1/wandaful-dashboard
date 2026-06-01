@@ -1187,14 +1187,26 @@ function renderExpenses(){
     periodSel.setAttribute('data-sel',selPeriod);
   }
 
-  // filter expenses for selected period
-  var isAll=selPeriod==='all';
-  var periodExp=isAll?expenses:expenses.filter(function(e){return e.date.startsWith(selPeriod);});
+  // apply filters (same as table)
+  var search2=(document.getElementById('exp-search')||{}).value||'';
+  var catF2=(document.getElementById('exp-cat-filter')||{}).value||'';
+  var deductF2=(document.getElementById('exp-deduct-filter')||{}).value||'';
+  var fromF2=(document.getElementById('exp-from')||{}).value||'';
+  var toF2=(document.getElementById('exp-to')||{}).value||'';
+
+  // filter expenses for selected period — use filter bar if set, else use viewing dropdown
+  var isAll=selPeriod==='all'&&!fromF2&&!toF2;
+  var periodExp=expenses.filter(function(e){
+    if(fromF2&&e.date.slice(0,7)<fromF2)return false;
+    if(toF2&&e.date.slice(0,7)>toF2)return false;
+    if(!fromF2&&!toF2&&selPeriod!=='all'&&!e.date.startsWith(selPeriod))return false;
+    return true;
+  });
   var periodTotal=periodExp.reduce(function(s,e){return s+Number(e.amount);},0);
   var periodDeduct=periodExp.filter(function(e){return e.deduct==='yes';}).reduce(function(s,e){return s+Number(e.amount);},0);
   var cm={};periodExp.forEach(function(e){cm[e.cat]=(cm[e.cat]||0)+Number(e.amount);});
   var top=Object.keys(cm).sort(function(a,b){return cm[b]-cm[a];})[0]||'—';
-  var periodLabel=isAll?'All time':new Date(selPeriod+'-01').toLocaleDateString('en-US',{month:'long',year:'numeric'});
+  var periodLabel=isAll?'All time':fromF2&&toF2&&fromF2===toF2?new Date(fromF2+'-01').toLocaleDateString('en-US',{month:'long',year:'numeric'}):fromF2||toF2?'Custom range':selPeriod==='all'?'All time':new Date(selPeriod+'-01').toLocaleDateString('en-US',{month:'long',year:'numeric'});
 
   document.getElementById('exp-metrics').innerHTML=
     '<div class="metric-card accent"><div class="m-label">'+periodLabel+'</div><div class="m-val">'+fmtD(periodTotal)+'</div><div class="m-sub">expenses</div></div>'+
