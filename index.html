@@ -736,10 +736,16 @@ input:focus,select:focus{border-color:var(--forest)}
     <div class="card">
       <div class="card-header">
         <div class="card-title">All overhead items</div>
-        <button class="btn btn-ghost" onclick="exportCSV('overhead')" style="display:flex;align-items:center;gap:5px;font-size:10px">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          CSV
-        </button>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost" onclick="exportCSV('overhead')" style="display:flex;align-items:center;gap:5px;font-size:10px">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            CSV
+          </button>
+          <button class="btn btn-primary" onclick="exportOverheadPDF()" style="display:flex;align-items:center;gap:6px">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export PDF
+          </button>
+        </div>
       </div>
       <table><thead><tr><th>Item</th><th>Category</th><th>Amount</th><th>Frequency</th><th>Est. monthly</th><th>Notes</th><th></th></tr></thead><tbody id="overhead-table"></tbody></table>
     </div>
@@ -1934,6 +1940,113 @@ function addOverhead(){
   overhead.push({name:n,cat:c,amount:Number(a),freq:f,notes:no});
   ['oh-name','oh-amount','oh-notes'].forEach(function(id){document.getElementById(id).value='';});
   persist();renderOverhead();
+}
+
+function exportOverheadPDF(){
+  var jsPDF=window.jspdf.jsPDF;
+  var doc=new jsPDF({orientation:'portrait',unit:'pt',format:'letter'});
+  var W=doc.internal.pageSize.getWidth();
+  var now=new Date();
+
+  // totals
+  var totalMo=overhead.reduce(function(s,o){return s+(o.freq==='per use'?0:ohMonthly(o.amount,o.freq));},0);
+  var totalAnnual=totalMo*12;
+
+  // header
+  doc.setFillColor(28,28,28);doc.rect(0,0,W,70,'F');
+  doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(21);
+  doc.text('WANDAFUL ESTHETICS',W/2,29,{align:'center'});
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(180,175,163);
+  doc.text('BUSINESS OVERHEAD REPORT',W/2,44,{align:'center'});
+  doc.text('Everything it costs to operate your business',W/2,58,{align:'center'});
+  doc.setTextColor(120,114,104);doc.setFontSize(9);
+  doc.text('Generated: '+now.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'}),40,88);
+  doc.setDrawColor(184,175,163);doc.setLineWidth(0.5);doc.line(40,96,W-40,96);
+
+  // summary boxes
+  var bw=(W-80-12)/3;
+  [{label:'EST. MONTHLY COST',val:fmtD(totalMo)},{label:'EST. ANNUAL COST',val:fmt(totalAnnual)},{label:'LINE ITEMS',val:String(overhead.length)}].forEach(function(b,i){
+    var x=40+(bw+6)*i;
+    doc.setFillColor(28,28,28);doc.roundedRect(x,104,bw,48,4,4,'F');
+    doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(6.5);
+    doc.text(b.label,x+bw/2,117,{align:'center'});
+    doc.setFontSize(13);doc.text(b.val,x+bw/2,136,{align:'center'});
+  });
+
+  // section header
+  var sy=168;
+  doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(28,28,28);
+  doc.text('Overhead by Category',40,sy);
+  doc.setDrawColor(184,175,163);doc.line(40,sy+5,W-40,sy+5);
+
+  // group by category
+  var cats={};
+  overhead.forEach(function(o){if(!cats[o.cat])cats[o.cat]=[];cats[o.cat].push(o);});
+  var rows=[];
+  var catTotals=[];
+  Object.keys(cats).sort().forEach(function(cat){
+    var items=cats[cat];
+    var catMo=items.reduce(function(s,o){return s+(o.freq==='per use'?0:ohMonthly(o.amount,o.freq));},0);
+    catTotals.push([cat,'','','',fmtD(catMo)]);
+    items.forEach(function(o){
+      var mo=o.freq==='per use'?'variable':fmtD(ohMonthly(o.amount,o.freq));
+      rows.push(['  '+o.name,o.cat,fmtD(o.amount),o.freq,mo]);
+    });
+  });
+
+  // build combined rows with category subtotals
+  var tableRows=[];
+  Object.keys(cats).sort().forEach(function(cat){
+    var items=cats[cat];
+    var catMo=items.reduce(function(s,o){return s+(o.freq==='per use'?0:ohMonthly(o.amount,o.freq));},0);
+    // category header row
+    tableRows.push({type:'cat',data:[cat,'','','',fmtD(catMo)+'/mo']});
+    items.forEach(function(o){
+      var mo=o.freq==='per use'?'variable':fmtD(ohMonthly(o.amount,o.freq));
+      tableRows.push({type:'item',data:[o.name,fmtD(o.amount),o.freq,mo,o.notes||'']});
+    });
+  });
+
+  // total row
+  tableRows.push({type:'total',data:['TOTAL MONTHLY COST','','','',fmtD(totalMo)+'/mo']});
+  tableRows.push({type:'total',data:['TOTAL ANNUAL COST','','','',fmt(totalAnnual)+'/yr']});
+
+  doc.autoTable({
+    startY:sy+12,
+    head:[['Item','Amount','Frequency','Est. Monthly','Notes']],
+    body:overhead.length?[].concat(
+      Object.keys(cats).sort().reduce(function(arr,cat){
+        var items=cats[cat];
+        var catMo=items.reduce(function(s,o){return s+(o.freq==='per use'?0:ohMonthly(o.amount,o.freq));},0);
+        // add category subtotal header
+        arr.push([{content:cat.toUpperCase()+' — '+fmtD(catMo)+'/mo',colSpan:5,styles:{fillColor:[232,223,210],textColor:[28,28,28],fontStyle:'bold',fontSize:8}}]);
+        items.sort(function(a,b){return a.name.localeCompare(b.name);}).forEach(function(o){
+          var mo=o.freq==='per use'?'variable':fmtD(ohMonthly(o.amount,o.freq));
+          arr.push([o.name,fmtD(o.amount),o.freq,mo,o.notes||'—']);
+        });
+        return arr;
+      },[]),
+      // totals
+      [{content:'',colSpan:5,styles:{fillColor:[255,255,255],cellPadding:3}}],
+      [{content:'ESTIMATED MONTHLY TOTAL',colSpan:3,styles:{fontStyle:'bold',fontSize:9,fillColor:[28,28,28],textColor:[255,255,255]}},{content:fmtD(totalMo)+' / month',colSpan:2,styles:{fontStyle:'bold',fontSize:9,fillColor:[28,28,28],textColor:[255,255,255],halign:'right'}}],
+      [{content:'ESTIMATED ANNUAL TOTAL',colSpan:3,styles:{fontStyle:'bold',fontSize:9,fillColor:[47,62,52],textColor:[255,255,255]}},{content:fmt(totalAnnual)+' / year',colSpan:2,styles:{fontStyle:'bold',fontSize:9,fillColor:[47,62,52],textColor:[255,255,255],halign:'right'}}]
+    ):[['No overhead items logged yet','','','','']],
+    margin:{left:40,right:40},
+    headStyles:{fillColor:[28,28,28],textColor:[255,255,255],fontSize:8,fontStyle:'bold'},
+    bodyStyles:{fontSize:9},
+    alternateRowStyles:{fillColor:[246,242,236]},
+    columnStyles:{0:{cellWidth:150},1:{halign:'right',cellWidth:65},2:{cellWidth:75},3:{halign:'right',cellWidth:70},4:{cellWidth:'auto'}},
+    styles:{lineColor:[232,223,210],lineWidth:0.3}
+  });
+
+  // footer
+  var pY=doc.internal.pageSize.getHeight()-20;
+  doc.setDrawColor(184,175,163);doc.line(40,pY-5,W-40,pY-5);
+  doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(180,175,163);
+  doc.text('Wandaful Esthetics — Business Overhead Report',40,pY);
+  doc.text('Page 1 of 1',W-40,pY,{align:'right'});
+
+  doc.save('Wandaful_Overhead_'+now.getFullYear()+'.pdf');
 }
 
 // ── BACKUP & SYNC ─────────────────────────────────────────────────────
