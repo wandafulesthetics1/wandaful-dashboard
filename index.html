@@ -1172,8 +1172,8 @@ function renderExpenses(){
   monthSet2[curMo]=true;
   expenses.forEach(function(e){if(e.date&&e.date.length>=7)monthSet2[e.date.slice(0,7)]=true;});
   var allMonths=Object.keys(monthSet2).sort().reverse();
-  // simple: use data-selected attribute to persist choice, default to curMo
-  var selPeriod=periodSel?periodSel.getAttribute('data-sel')||curMo:curMo;
+  // simple: use data-selected attribute to persist choice, default to all time
+  var selPeriod=periodSel?periodSel.getAttribute('data-sel')||'all':'all';
   if(periodSel){
     var opts='<option value="all"'+(selPeriod==='all'?' selected':'')+'>All time</option>'+
       allMonths.map(function(m){
@@ -1286,7 +1286,7 @@ function renderBudget(){
   transactions.forEach(function(t){if(t.date&&t.date.length>=7)monthSet[t.date.slice(0,7)]=true;});
   expenses.forEach(function(e){if(e.date&&e.date.length>=7)monthSet[e.date.slice(0,7)]=true;});
   var allMonths=Object.keys(monthSet).sort().reverse();
-  // simple: use data-selected attribute to persist choice, default to curMo
+  // simple: use data-selected attribute to persist choice, default to current month
   var selPeriod=periodSel?periodSel.getAttribute('data-sel')||curMo:curMo;
   if(periodSel){
     var opts='<option value="all"'+(selPeriod==='all'?' selected':'')+'>All time</option>'+
