@@ -1178,7 +1178,7 @@ function renderExpenses(){
   if(periodSel){
     var opts='<option value="all"'+(selPeriod==='all'?' selected':'')+'>All time</option>'+
       allMonths.map(function(m){
-        var d=new Date(m+'-01');
+        var mp=m.split('-');var d=new Date(Number(mp[0]),Number(mp[1])-1,1);
         var label=d.toLocaleDateString('en-US',{month:'long',year:'numeric'});
         return'<option value="'+m+'"'+(m===selPeriod?' selected':'')+'>'+label+'</option>';
       }).join('');
@@ -1208,7 +1208,8 @@ function renderExpenses(){
   var periodDeduct=periodExp.filter(function(e){return e.deduct==='yes';}).reduce(function(s,e){return s+Number(e.amount);},0);
   var cm={};periodExp.forEach(function(e){cm[e.cat]=(cm[e.cat]||0)+Number(e.amount);});
   var top=Object.keys(cm).sort(function(a,b){return cm[b]-cm[a];})[0]||'—';
-  var periodLabel=isAll?'All time':fromF2&&fromF2===toF2?new Date(fromF2+'-01').toLocaleDateString('en-US',{month:'long',year:'numeric'}):fromF2||toF2?'Custom range':selPeriod==='all'?'All time':new Date(selPeriod+'-01').toLocaleDateString('en-US',{month:'long',year:'numeric'});
+  function fmtMonthLabel(ym){var parts=ym.split('-');var d=new Date(Number(parts[0]),Number(parts[1])-1,1);return d.toLocaleDateString('en-US',{month:'long',year:'numeric'});}
+  var periodLabel=isAll?'All time':fromF2&&fromF2===toF2?fmtMonthLabel(fromF2):fromF2||toF2?'Custom range':selPeriod==='all'?'All time':fmtMonthLabel(selPeriod);
 
   document.getElementById('exp-metrics').innerHTML=
     '<div class="metric-card accent"><div class="m-label">'+periodLabel+'</div><div class="m-val">'+fmtD(periodTotal)+'</div><div class="m-sub">expenses</div></div>'+
@@ -1308,7 +1309,7 @@ function renderBudget(){
     var opts='<option value="all"'+(selPeriod==='all'?' selected':'')+'>All time</option>'+
       '<option value="year"'+(selPeriod==='year'?' selected':'')+'>This year</option>'+
       allMonths.map(function(m){
-        var d=new Date(m+'-01');
+        var mp=m.split('-');var d=new Date(Number(mp[0]),Number(mp[1])-1,1);
         var label=d.toLocaleDateString('en-US',{month:'long',year:'numeric'});
         return'<option value="'+m+'"'+(m===selPeriod?' selected':'')+'>'+label+'</option>';
       }).join('');
@@ -1338,7 +1339,7 @@ function renderBudget(){
   var pInc=periodTx.filter(function(t){return t.type==='income';}).reduce(function(s,t){return s+Number(t.amount);},0);
   var pExp=periodTx.filter(function(t){return t.type==='expense';}).reduce(function(s,t){return s+Number(t.amount);},0);
   var pNet=pInc-pExp;
-  var periodLabel=isAll?'All time':isYear?curYear+' so far':new Date(selPeriod+'-01').toLocaleDateString('en-US',{month:'long',year:'numeric'});
+  var sp2=selPeriod.split('-');var periodLabel=isAll?'All time':isYear?curYear+' so far':new Date(Number(sp2[0]),Number(sp2[1])-1,1).toLocaleDateString('en-US',{month:'long',year:'numeric'});
 
   document.getElementById('budget-metrics').innerHTML=
     '<div class="metric-card"><div class="m-label">Income</div><div class="m-val">'+fmtD(pInc)+'</div><div class="m-sub">'+periodLabel+'</div></div>'+
