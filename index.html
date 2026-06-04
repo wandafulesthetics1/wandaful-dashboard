@@ -484,10 +484,16 @@ input:focus,select:focus{border-color:var(--forest)}
     <div class="card">
       <div class="card-header">
         <div class="card-title">All expenses</div>
-        <button class="btn btn-ghost" onclick="exportCSV('expenses')" style="display:flex;align-items:center;gap:5px;font-size:10px">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          CSV
-        </button>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost" onclick="exportCSV('expenses')" style="display:flex;align-items:center;gap:5px;font-size:10px">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            CSV
+          </button>
+          <button class="btn btn-primary" onclick="openExpPDFModal()" style="display:flex;align-items:center;gap:6px">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export PDF
+          </button>
+        </div>
       </div>
       <div class="filter-bar">
         <input id="exp-search" placeholder="Search description..." oninput="renderExpenses()" style="flex:1;min-width:130px">
@@ -848,6 +854,34 @@ input:focus,select:focus{border-color:var(--forest)}
     <div style="display:flex;gap:10px;justify-content:flex-end">
       <button class="btn btn-ghost" onclick="closePDFModal()">Cancel</button>
       <button class="btn btn-primary" onclick="exportPDF()">Generate PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- EXPENSES PDF MODAL -->
+<div id="exp-pdf-modal" style="display:none;position:fixed;inset:0;z-index:998;background:rgba(0,0,0,0.45);align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--white);border-radius:var(--radius);padding:28px 30px;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,0.2)">
+    <div style="font-family:'Libre Baskerville',serif;font-size:17px;font-weight:700;color:var(--ink);margin-bottom:6px">Export Expenses PDF</div>
+    <div style="font-size:11px;color:var(--ink-muted);margin-bottom:20px">Choose the date range for your expense report.</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <label style="font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink-soft);font-weight:600">From month</label>
+        <input id="exp-pdf-from" type="month" style="font-size:12px">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <label style="font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink-soft);font-weight:600">To month</label>
+        <input id="exp-pdf-to" type="month" style="font-size:12px">
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+      <button class="btn btn-ghost" style="font-size:10px" onclick="setExpPDFRange('this-year')">This year</button>
+      <button class="btn btn-ghost" style="font-size:10px" onclick="setExpPDFRange('last-year')">Last year</button>
+      <button class="btn btn-ghost" style="font-size:10px" onclick="setExpPDFRange('last-6')">Last 6 months</button>
+      <button class="btn btn-ghost" style="font-size:10px" onclick="setExpPDFRange('this-month')">This month</button>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="closeExpPDFModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="exportExpensesPDF()">Generate PDF</button>
     </div>
   </div>
 </div>
@@ -2111,6 +2145,112 @@ function exportOverheadPDF(){
   doc.text('Wandaful Esthetics — Business Overhead Report',40,pY);
   doc.text('Page 1 of 1',W-40,pY,{align:'right'});
   doc.save('Wandaful_Overhead_'+now.getFullYear()+'.pdf');
+}
+
+// ── EXPENSES PDF EXPORT ───────────────────────────────────────────────
+function openExpPDFModal(){
+  var now=new Date();
+  var curYr=now.getFullYear();
+  var curMo=curYr+'-'+(String(now.getMonth()+1).padStart(2,'0'));
+  var f=document.getElementById('exp-pdf-from');
+  var t=document.getElementById('exp-pdf-to');
+  if(!f.value)f.value=curYr+'-01';
+  if(!t.value)t.value=curMo;
+  document.getElementById('exp-pdf-modal').style.display='flex';
+}
+function closeExpPDFModal(){document.getElementById('exp-pdf-modal').style.display='none';}
+function setExpPDFRange(preset){
+  var now=new Date();var yr=now.getFullYear();
+  var mo=String(now.getMonth()+1).padStart(2,'0');var curMo=yr+'-'+mo;
+  var f=document.getElementById('exp-pdf-from');var t=document.getElementById('exp-pdf-to');
+  if(preset==='this-year'){f.value=yr+'-01';t.value=curMo;}
+  else if(preset==='last-year'){f.value=(yr-1)+'-01';t.value=(yr-1)+'-12';}
+  else if(preset==='last-6'){var d=new Date(yr,now.getMonth()-5,1);f.value=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');t.value=curMo;}
+  else if(preset==='this-month'){f.value=curMo;t.value=curMo;}
+}
+function exportExpensesPDF(){
+  var fromMo=(document.getElementById('exp-pdf-from')||{}).value||'';
+  var toMo=(document.getElementById('exp-pdf-to')||{}).value||'';
+  if(!fromMo||!toMo){alert('Please select a date range.');return;}
+  if(fromMo>toMo){alert('From month must be before To month.');return;}
+  closeExpPDFModal();
+  var jsPDF=window.jspdf.jsPDF;
+  var doc=new jsPDF({orientation:'portrait',unit:'pt',format:'letter'});
+  var W=doc.internal.pageSize.getWidth();var now=new Date();
+  function fmtML(ym){var p=ym.split('-');return new Date(Number(p[0]),Number(p[1])-1,1).toLocaleDateString('en-US',{month:'long',year:'numeric'});}
+  var periodLabel=fromMo===toMo?fmtML(fromMo):fmtML(fromMo)+' \u2013 '+fmtML(toMo);
+
+  // header
+  doc.setFillColor(28,28,28);doc.rect(0,0,W,70,'F');
+  doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(21);doc.text('WANDAFUL ESTHETICS',W/2,29,{align:'center'});
+  doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(180,175,163);
+  doc.text('EXPENSE REPORT',W/2,44,{align:'center'});
+  doc.text('Prepared for tax purposes \u2014 Wanda Math, Founder',W/2,58,{align:'center'});
+  doc.setTextColor(120,114,104);doc.setFontSize(9);
+  doc.text('Generated: '+now.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'}),40,88);
+  doc.text('Period: '+periodLabel,W-40,88,{align:'right'});
+  doc.setDrawColor(184,175,163);doc.setLineWidth(0.5);doc.line(40,96,W-40,96);
+
+  // filter expenses for range
+  var filtExp=expenses.filter(function(e){var mo=e.date.slice(0,7);return mo>=fromMo&&mo<=toMo;});
+  var grandTotal=filtExp.reduce(function(s,e){return s+Number(e.amount);},0);
+  var deductTotal=filtExp.filter(function(e){return e.deduct==='yes';}).reduce(function(s,e){return s+Number(e.amount);},0);
+
+  // summary boxes
+  var bw=(W-80-12)/3;
+  [{label:'TOTAL EXPENSES',val:fmtD(grandTotal)},{label:'TAX DEDUCTIBLE',val:fmtD(deductTotal)},{label:'LINE ITEMS',val:String(filtExp.length)}].forEach(function(b,i){
+    var x=40+(bw+6)*i;
+    doc.setFillColor(28,28,28);doc.roundedRect(x,104,bw,44,4,4,'F');
+    doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(6.5);
+    doc.text(b.label,x+bw/2,115,{align:'center'});
+    doc.setFontSize(13);doc.text(b.val,x+bw/2,132,{align:'center'});
+  });
+
+  // monthly breakdown
+  var sy=164;doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(28,28,28);
+  doc.text('Monthly Breakdown',40,sy);doc.setDrawColor(184,175,163);doc.line(40,sy+5,W-40,sy+5);
+  var months=[];var cur=fromMo;
+  while(cur<=toMo){
+    months.push(cur);
+    var sp=cur.split('-');var y=Number(sp[0]),m2=Number(sp[1]);m2++;if(m2>12){m2=1;y++;}
+    cur=y+'-'+String(m2).padStart(2,'0');
+  }
+  var mRows=[];var mTotal=0;
+  months.forEach(function(mo){
+    var p=mo.split('-');
+    var label=new Date(Number(p[0]),Number(p[1])-1,1).toLocaleDateString('en-US',{month:'short',year:'numeric'});
+    var mExp=filtExp.filter(function(e){return e.date.startsWith(mo);});
+    var mAmt=mExp.reduce(function(s,e){return s+Number(e.amount);},0);
+    var mDed=mExp.filter(function(e){return e.deduct==='yes';}).reduce(function(s,e){return s+Number(e.amount);},0);
+    if(mExp.length>0){mRows.push([label,String(mExp.length),fmtD(mAmt),fmtD(mDed)]);mTotal+=mAmt;}
+  });
+  mRows.push(['TOTAL','',fmtD(mTotal),fmtD(deductTotal)]);
+  doc.autoTable({startY:sy+10,head:[['Month','Items','Total','Deductible']],body:mRows,margin:{left:40,right:40},
+    headStyles:{fillColor:[28,28,28],textColor:[255,255,255],fontSize:8,fontStyle:'bold'},
+    bodyStyles:{fontSize:9},alternateRowStyles:{fillColor:[246,242,236]},
+    columnStyles:{0:{cellWidth:100},1:{halign:'center',cellWidth:50},2:{halign:'right'},3:{halign:'right'}},
+    styles:{lineColor:[232,223,210],lineWidth:0.3},
+    didParseCell:function(data){if(data.section==='body'&&data.row.index===mRows.length-1){data.cell.styles.fontStyle='bold';data.cell.styles.fillColor=[28,28,28];data.cell.styles.textColor=[255,255,255];}}
+  });
+
+  // expense detail grouped by category
+  var ty2=doc.lastAutoTable.finalY+16;doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(28,28,28);
+  doc.text('Expense Detail \u2014 '+periodLabel,40,ty2);doc.line(40,ty2+5,W-40,ty2+5);
+  var sorted=[].concat(filtExp).sort(function(a,b){return b.date.localeCompare(a.date);});
+  var expRows=sorted.map(function(e){return[e.date,e.desc.length>32?e.desc.slice(0,30)+'\u2026':e.desc,e.cat,e.deduct,fmtD(e.amount)];});
+  if(!expRows.length)expRows=[['No expenses in this period','','','','']];
+  doc.autoTable({startY:ty2+10,head:[['Date','Description','Category','Deductible','Amount']],body:expRows,margin:{left:40,right:40},
+    headStyles:{fillColor:[47,62,52],textColor:[255,255,255],fontSize:8,fontStyle:'bold'},
+    bodyStyles:{fontSize:8},alternateRowStyles:{fillColor:[246,242,236]},
+    columnStyles:{0:{cellWidth:58},1:{cellWidth:150},2:{cellWidth:100},3:{cellWidth:55},4:{halign:'right'}},
+    styles:{lineColor:[232,223,210],lineWidth:0.3}
+  });
+
+  // footer
+  var pc=doc.internal.getNumberOfPages();
+  for(var p=1;p<=pc;p++){doc.setPage(p);var pY=doc.internal.pageSize.getHeight()-20;doc.setDrawColor(184,175,163);doc.line(40,pY-5,W-40,pY-5);doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(180,175,163);doc.text('Wandaful Esthetics \u2014 Expense Report',40,pY);doc.text('Page '+p+' of '+pc,W-40,pY,{align:'right'});}
+  var safePeriod=periodLabel.replace(/[^a-zA-Z0-9]/g,'_');
+  doc.save('Wandaful_Expenses_'+safePeriod+'.pdf');
 }
 
 // ── BACKUP & SYNC ─────────────────────────────────────────────────────
