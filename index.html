@@ -1506,7 +1506,6 @@ function exportPDF(){
   doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(21);doc.text('WANDAFUL ESTHETICS',W/2,29,{align:'center'});
   doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(180,175,163);
   doc.text('PROFIT & LOSS STATEMENT',W/2,44,{align:'center'});
-  doc.text('Prepared for tax purposes — Wanda Math, Founder',W/2,58,{align:'center'});
   doc.setTextColor(120,114,104);doc.setFontSize(9);
   doc.text('Generated: '+now.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'}),40,88);
   doc.text('Period: '+periodLabel,W-40,88,{align:'right'});
@@ -2185,7 +2184,6 @@ function exportExpensesPDF(){
   doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(21);doc.text('WANDAFUL ESTHETICS',W/2,29,{align:'center'});
   doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(180,175,163);
   doc.text('EXPENSE REPORT',W/2,44,{align:'center'});
-  doc.text('Prepared for tax purposes \u2014 Wanda Math, Founder',W/2,58,{align:'center'});
   doc.setTextColor(120,114,104);doc.setFontSize(9);
   doc.text('Generated: '+now.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'}),40,88);
   doc.text('Period: '+periodLabel,W-40,88,{align:'right'});
