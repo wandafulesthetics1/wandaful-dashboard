@@ -1172,8 +1172,8 @@ function renderExpenses(){
   monthSet2[curMo]=true;
   expenses.forEach(function(e){if(e.date&&e.date.length>=7)monthSet2[e.date.slice(0,7)]=true;});
   var allMonths=Object.keys(monthSet2).sort().reverse();
-  // simple: use data-selected attribute to persist choice, default to all time
-  var selPeriod=periodSel?periodSel.getAttribute('data-sel')||'all':'all';
+  // simple: use data-selected attribute to persist choice, default to curMo
+  var selPeriod=periodSel?periodSel.getAttribute('data-sel')||curMo:curMo;
   if(periodSel){
     var opts='<option value="all"'+(selPeriod==='all'?' selected':'')+'>All time</option>'+
       allMonths.map(function(m){
@@ -1187,26 +1187,14 @@ function renderExpenses(){
     periodSel.setAttribute('data-sel',selPeriod);
   }
 
-  // apply filters (same as table)
-  var search2=(document.getElementById('exp-search')||{}).value||'';
-  var catF2=(document.getElementById('exp-cat-filter')||{}).value||'';
-  var deductF2=(document.getElementById('exp-deduct-filter')||{}).value||'';
-  var fromF2=(document.getElementById('exp-from')||{}).value||'';
-  var toF2=(document.getElementById('exp-to')||{}).value||'';
-
-  // filter expenses for selected period — use filter bar if set, else use viewing dropdown
-  var isAll=selPeriod==='all'&&!fromF2&&!toF2;
-  var periodExp=expenses.filter(function(e){
-    if(fromF2&&e.date.slice(0,7)<fromF2)return false;
-    if(toF2&&e.date.slice(0,7)>toF2)return false;
-    if(!fromF2&&!toF2&&selPeriod!=='all'&&!e.date.startsWith(selPeriod))return false;
-    return true;
-  });
+  // filter expenses for selected period
+  var isAll=selPeriod==='all';
+  var periodExp=isAll?expenses:expenses.filter(function(e){return e.date.startsWith(selPeriod);});
   var periodTotal=periodExp.reduce(function(s,e){return s+Number(e.amount);},0);
   var periodDeduct=periodExp.filter(function(e){return e.deduct==='yes';}).reduce(function(s,e){return s+Number(e.amount);},0);
   var cm={};periodExp.forEach(function(e){cm[e.cat]=(cm[e.cat]||0)+Number(e.amount);});
   var top=Object.keys(cm).sort(function(a,b){return cm[b]-cm[a];})[0]||'—';
-  var periodLabel=isAll?'All time':fromF2&&toF2&&fromF2===toF2?new Date(fromF2+'-01').toLocaleDateString('en-US',{month:'long',year:'numeric'}):fromF2||toF2?'Custom range':selPeriod==='all'?'All time':new Date(selPeriod+'-01').toLocaleDateString('en-US',{month:'long',year:'numeric'});
+  var periodLabel=isAll?'All time':new Date(selPeriod+'-01').toLocaleDateString('en-US',{month:'long',year:'numeric'});
 
   document.getElementById('exp-metrics').innerHTML=
     '<div class="metric-card accent"><div class="m-label">'+periodLabel+'</div><div class="m-val">'+fmtD(periodTotal)+'</div><div class="m-sub">expenses</div></div>'+
@@ -1298,7 +1286,7 @@ function renderBudget(){
   transactions.forEach(function(t){if(t.date&&t.date.length>=7)monthSet[t.date.slice(0,7)]=true;});
   expenses.forEach(function(e){if(e.date&&e.date.length>=7)monthSet[e.date.slice(0,7)]=true;});
   var allMonths=Object.keys(monthSet).sort().reverse();
-  // simple: use data-selected attribute to persist choice, default to current month
+  // simple: use data-selected attribute to persist choice, default to curMo
   var selPeriod=periodSel?periodSel.getAttribute('data-sel')||curMo:curMo;
   if(periodSel){
     var opts='<option value="all"'+(selPeriod==='all'?' selected':'')+'>All time</option>'+
@@ -1395,9 +1383,9 @@ function addTransaction(){
 // ── PDF EXPORT ────────────────────────────────────────────────────────
 function exportPDF(){
   var jsPDF=window.jspdf.jsPDF;var doc=new jsPDF({orientation:'portrait',unit:'pt',format:'letter'});
-  var W=doc.internal.pageSize.getWidth();var t=totals();
+  var W=doc.internal.pageSize.getWidth();
   var now=new Date();var yr=now.getFullYear();
-  var mg=t.totalInc>0?Math.round((t.net/t.totalInc)*100):0;
+  // header
   doc.setFillColor(28,28,28);doc.rect(0,0,W,70,'F');
   doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(21);doc.text('WANDAFUL ESTHETICS',W/2,29,{align:'center'});
   doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(180,175,163);
@@ -1407,20 +1395,18 @@ function exportPDF(){
   doc.text('Generated: '+now.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'}),40,88);
   doc.text('Tax Year: '+yr,W-40,88,{align:'right'});
   doc.setDrawColor(184,175,163);doc.setLineWidth(0.5);doc.line(40,96,W-40,96);
-  var bw=(W-80-24)/4;
-  [{label:'SERVICE INCOME',val:fmtD(t.svcInc),col:[47,62,52]},{label:'TIPS',val:fmtD(t.tips),col:[47,62,52]},{label:'EDUCATION',val:fmtD(t.eduInc),col:[47,62,52]},{label:'NET PROFIT',val:fmtD(t.net),col:[28,28,28]}].forEach(function(b,i){
-    var x=40+(bw+8)*i;doc.setFillColor(b.col[0],b.col[1],b.col[2]);doc.roundedRect(x,104,bw,48,4,4,'F');
-    doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.text(b.label,x+bw/2,117,{align:'center'});
-    doc.setFontSize(13);doc.text(b.val,x+bw/2,136,{align:'center'});
-  });
-  var by=166;doc.setTextColor(120,114,104);doc.setFontSize(8);doc.setFont('helvetica','normal');doc.text('PROFIT MARGIN',40,by);doc.setFont('helvetica','bold');doc.setTextColor(28,28,28);doc.text(mg+'%',W-40,by,{align:'right'});
-  doc.setFillColor(232,223,210);doc.roundedRect(40,by+4,W-80,7,2,2,'F');doc.setFillColor(28,28,28);doc.roundedRect(40,by+4,(W-80)*(Math.min(100,Math.max(0,mg))/100),7,2,2,'F');
-  var sy=185;doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(28,28,28);doc.text('Monthly Breakdown',40,sy);doc.setDrawColor(184,175,163);doc.line(40,sy+5,W-40,sy+5);
+  // monthly breakdown — starts right after header
+  var sy=112;doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(28,28,28);doc.text('Monthly Breakdown',40,sy);doc.setDrawColor(184,175,163);doc.line(40,sy+5,W-40,sy+5);
   var mI=Array(12).fill(0),mE=Array(12).fill(0);
   transactions.forEach(function(tx){if(tx.date.slice(0,4)==String(yr)){var m=parseInt(tx.date.slice(5,7))-1;if(tx.type==='income')mI[m]+=Number(tx.amount);else mE[m]+=Number(tx.amount);}});
   expenses.forEach(function(e){if(e.date.slice(0,4)==String(yr)){var m=parseInt(e.date.slice(5,7))-1;mE[m]+=Number(e.amount);}});
   var mRows=MONTHS.map(function(mo,i){var inc=mI[i],exp=mE[i],n=inc-exp;return[mo,inc>0?fmtD(inc):'—',exp>0?fmtD(exp):'—',n===0?'—':n>0?fmtD(n):'-'+fmtD(Math.abs(n))];}).filter(function(r){return r[1]!=='—'||r[2]!=='—';});
-  doc.autoTable({startY:sy+10,head:[['Month','Income','Expenses','Net']],body:mRows,margin:{left:40,right:40},headStyles:{fillColor:[28,28,28],textColor:[255,255,255],fontSize:8,fontStyle:'bold'},bodyStyles:{fontSize:9},alternateRowStyles:{fillColor:[246,242,236]},columnStyles:{0:{cellWidth:68},1:{halign:'right'},2:{halign:'right'},3:{halign:'right'}},styles:{lineColor:[232,223,210],lineWidth:0.3}});
+  // add a totals row at the bottom
+  var totalI=mI.reduce(function(a,b){return a+b;},0);
+  var totalE=mE.reduce(function(a,b){return a+b;},0);
+  var totalN=totalI-totalE;
+  mRows.push(['TOTAL',fmtD(totalI),fmtD(totalE),totalN>=0?fmtD(totalN):'-'+fmtD(Math.abs(totalN))]);
+  doc.autoTable({startY:sy+10,head:[['Month','Income','Expenses','Net']],body:mRows,margin:{left:40,right:40},headStyles:{fillColor:[28,28,28],textColor:[255,255,255],fontSize:8,fontStyle:'bold'},bodyStyles:{fontSize:9},alternateRowStyles:{fillColor:[246,242,236]},columnStyles:{0:{cellWidth:68},1:{halign:'right'},2:{halign:'right'},3:{halign:'right'}},styles:{lineColor:[232,223,210],lineWidth:0.3},didParseCell:function(data){if(data.section==='body'&&data.row.index===mRows.length-1){data.cell.styles.fontStyle='bold';data.cell.styles.fillColor=[28,28,28];data.cell.styles.textColor=[255,255,255];}}});
   var ty2=doc.lastAutoTable.finalY+16;doc.setFont('helvetica','bold');doc.setFontSize(11);doc.text('Transaction Detail',40,ty2);doc.line(40,ty2+5,W-40,ty2+5);
   var txRows=[].concat(transactions).sort(function(a,b){return b.date.localeCompare(a.date);}).map(function(tx){return[tx.date,tx.desc.length>35?tx.desc.slice(0,33)+'…':tx.desc,tx.cat,tx.type.charAt(0).toUpperCase()+tx.type.slice(1),(tx.type==='expense'?'- ':'')+fmtD(tx.amount)];});
   doc.autoTable({startY:ty2+10,head:[['Date','Description','Category','Type','Amount']],body:txRows,margin:{left:40,right:40},headStyles:{fillColor:[47,62,52],textColor:[255,255,255],fontSize:8,fontStyle:'bold'},bodyStyles:{fontSize:8},alternateRowStyles:{fillColor:[246,242,236]},columnStyles:{0:{cellWidth:58},1:{cellWidth:150},2:{cellWidth:90},3:{cellWidth:50},4:{halign:'right'}},styles:{lineColor:[232,223,210],lineWidth:0.3},didParseCell:function(data){if(data.section==='body'&&data.column.index===4){var v=data.cell.raw;if(v&&v.indexOf('-')===0)data.cell.styles.textColor=[139,67,67];}}});
@@ -1466,16 +1452,16 @@ function exportCSV(type){
     downloadCSV('Wandaful_Inventory_'+now+'.csv',
       [['Item','Category','Qty in Stock','Reorder At','Unit Cost','Buy Link']].concat(
         inventory.map(function(i){return[i.name,i.cat,i.qty,i.min,i.cost,i.link||''];})));
-  } else if(type==='transactions'){
-    downloadCSV('Wandaful_Transactions_'+now+'.csv',
-      [['Date','Description','Category','Type','Amount']].concat(
-        [].concat(transactions).sort(function(a,b){return b.date.localeCompare(a.date);}).map(function(t){return[t.date,t.desc,t.cat,t.type,t.amount];})));
   } else if(type==='overhead'){
     downloadCSV('Wandaful_Overhead_'+now+'.csv',
       [['Item','Category','Amount','Frequency','Est Monthly','Notes']].concat(
         [].concat(overhead).sort(function(a,b){return a.cat.localeCompare(b.cat);}).map(function(o){
           return[o.name,o.cat,o.amount,o.freq,o.freq==='per use'?'variable':ohMonthly(o.amount,o.freq),o.notes||''];
         })));
+  } else if(type==='transactions'){
+    downloadCSV('Wandaful_Transactions_'+now+'.csv',
+      [['Date','Description','Category','Type','Amount']].concat(
+        [].concat(transactions).sort(function(a,b){return b.date.localeCompare(a.date);}).map(function(t){return[t.date,t.desc,t.cat,t.type,t.amount];})));
   }
 }
 
@@ -1953,17 +1939,13 @@ function addOverhead(){
   ['oh-name','oh-amount','oh-notes'].forEach(function(id){document.getElementById(id).value='';});
   persist();renderOverhead();
 }
-
 function exportOverheadPDF(){
   var jsPDF=window.jspdf.jsPDF;
   var doc=new jsPDF({orientation:'portrait',unit:'pt',format:'letter'});
   var W=doc.internal.pageSize.getWidth();
   var now=new Date();
-
-  // totals
   var totalMo=overhead.reduce(function(s,o){return s+(o.freq==='per use'?0:ohMonthly(o.amount,o.freq));},0);
   var totalAnnual=totalMo*12;
-
   // header
   doc.setFillColor(28,28,28);doc.rect(0,0,W,70,'F');
   doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(21);
@@ -1974,7 +1956,6 @@ function exportOverheadPDF(){
   doc.setTextColor(120,114,104);doc.setFontSize(9);
   doc.text('Generated: '+now.toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'}),40,88);
   doc.setDrawColor(184,175,163);doc.setLineWidth(0.5);doc.line(40,96,W-40,96);
-
   // summary boxes
   var bw=(W-80-12)/3;
   [{label:'EST. MONTHLY COST',val:fmtD(totalMo)},{label:'EST. ANNUAL COST',val:fmt(totalAnnual)},{label:'LINE ITEMS',val:String(overhead.length)}].forEach(function(b,i){
@@ -1984,65 +1965,32 @@ function exportOverheadPDF(){
     doc.text(b.label,x+bw/2,117,{align:'center'});
     doc.setFontSize(13);doc.text(b.val,x+bw/2,136,{align:'center'});
   });
-
   // section header
   var sy=168;
   doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(28,28,28);
   doc.text('Overhead by Category',40,sy);
   doc.setDrawColor(184,175,163);doc.line(40,sy+5,W-40,sy+5);
-
-  // group by category
+  // build table rows grouped by category
   var cats={};
   overhead.forEach(function(o){if(!cats[o.cat])cats[o.cat]=[];cats[o.cat].push(o);});
-  var rows=[];
-  var catTotals=[];
+  var tableBody=[];
   Object.keys(cats).sort().forEach(function(cat){
     var items=cats[cat];
     var catMo=items.reduce(function(s,o){return s+(o.freq==='per use'?0:ohMonthly(o.amount,o.freq));},0);
-    catTotals.push([cat,'','','',fmtD(catMo)]);
-    items.forEach(function(o){
+    tableBody.push([{content:cat.toUpperCase()+' — '+fmtD(catMo)+'/mo',colSpan:5,styles:{fillColor:[232,223,210],textColor:[28,28,28],fontStyle:'bold',fontSize:8}}]);
+    items.sort(function(a,b){return a.name.localeCompare(b.name);}).forEach(function(o){
       var mo=o.freq==='per use'?'variable':fmtD(ohMonthly(o.amount,o.freq));
-      rows.push(['  '+o.name,o.cat,fmtD(o.amount),o.freq,mo]);
+      tableBody.push([o.name,fmtD(o.amount),o.freq,mo,o.notes||'—']);
     });
   });
-
-  // build combined rows with category subtotals
-  var tableRows=[];
-  Object.keys(cats).sort().forEach(function(cat){
-    var items=cats[cat];
-    var catMo=items.reduce(function(s,o){return s+(o.freq==='per use'?0:ohMonthly(o.amount,o.freq));},0);
-    // category header row
-    tableRows.push({type:'cat',data:[cat,'','','',fmtD(catMo)+'/mo']});
-    items.forEach(function(o){
-      var mo=o.freq==='per use'?'variable':fmtD(ohMonthly(o.amount,o.freq));
-      tableRows.push({type:'item',data:[o.name,fmtD(o.amount),o.freq,mo,o.notes||'']});
-    });
-  });
-
-  // total row
-  tableRows.push({type:'total',data:['TOTAL MONTHLY COST','','','',fmtD(totalMo)+'/mo']});
-  tableRows.push({type:'total',data:['TOTAL ANNUAL COST','','','',fmt(totalAnnual)+'/yr']});
-
+  // totals rows
+  tableBody.push([{content:'',colSpan:5,styles:{fillColor:[255,255,255],cellPadding:2}}]);
+  tableBody.push([{content:'ESTIMATED MONTHLY TOTAL',colSpan:3,styles:{fontStyle:'bold',fontSize:9,fillColor:[28,28,28],textColor:[255,255,255]}},{content:fmtD(totalMo)+' / month',colSpan:2,styles:{fontStyle:'bold',fontSize:9,fillColor:[28,28,28],textColor:[255,255,255],halign:'right'}}]);
+  tableBody.push([{content:'ESTIMATED ANNUAL TOTAL',colSpan:3,styles:{fontStyle:'bold',fontSize:9,fillColor:[47,62,52],textColor:[255,255,255]}},{content:fmt(totalAnnual)+' / year',colSpan:2,styles:{fontStyle:'bold',fontSize:9,fillColor:[47,62,52],textColor:[255,255,255],halign:'right'}}]);
   doc.autoTable({
     startY:sy+12,
     head:[['Item','Amount','Frequency','Est. Monthly','Notes']],
-    body:overhead.length?[].concat(
-      Object.keys(cats).sort().reduce(function(arr,cat){
-        var items=cats[cat];
-        var catMo=items.reduce(function(s,o){return s+(o.freq==='per use'?0:ohMonthly(o.amount,o.freq));},0);
-        // add category subtotal header
-        arr.push([{content:cat.toUpperCase()+' — '+fmtD(catMo)+'/mo',colSpan:5,styles:{fillColor:[232,223,210],textColor:[28,28,28],fontStyle:'bold',fontSize:8}}]);
-        items.sort(function(a,b){return a.name.localeCompare(b.name);}).forEach(function(o){
-          var mo=o.freq==='per use'?'variable':fmtD(ohMonthly(o.amount,o.freq));
-          arr.push([o.name,fmtD(o.amount),o.freq,mo,o.notes||'—']);
-        });
-        return arr;
-      },[]),
-      // totals
-      [{content:'',colSpan:5,styles:{fillColor:[255,255,255],cellPadding:3}}],
-      [{content:'ESTIMATED MONTHLY TOTAL',colSpan:3,styles:{fontStyle:'bold',fontSize:9,fillColor:[28,28,28],textColor:[255,255,255]}},{content:fmtD(totalMo)+' / month',colSpan:2,styles:{fontStyle:'bold',fontSize:9,fillColor:[28,28,28],textColor:[255,255,255],halign:'right'}}],
-      [{content:'ESTIMATED ANNUAL TOTAL',colSpan:3,styles:{fontStyle:'bold',fontSize:9,fillColor:[47,62,52],textColor:[255,255,255]}},{content:fmt(totalAnnual)+' / year',colSpan:2,styles:{fontStyle:'bold',fontSize:9,fillColor:[47,62,52],textColor:[255,255,255],halign:'right'}}]
-    ):[['No overhead items logged yet','','','','']],
+    body:overhead.length?tableBody:[['No overhead items logged yet','','','','']],
     margin:{left:40,right:40},
     headStyles:{fillColor:[28,28,28],textColor:[255,255,255],fontSize:8,fontStyle:'bold'},
     bodyStyles:{fontSize:9},
@@ -2050,14 +1998,12 @@ function exportOverheadPDF(){
     columnStyles:{0:{cellWidth:150},1:{halign:'right',cellWidth:65},2:{cellWidth:75},3:{halign:'right',cellWidth:70},4:{cellWidth:'auto'}},
     styles:{lineColor:[232,223,210],lineWidth:0.3}
   });
-
   // footer
   var pY=doc.internal.pageSize.getHeight()-20;
   doc.setDrawColor(184,175,163);doc.line(40,pY-5,W-40,pY-5);
   doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(180,175,163);
   doc.text('Wandaful Esthetics — Business Overhead Report',40,pY);
   doc.text('Page 1 of 1',W-40,pY,{align:'right'});
-
   doc.save('Wandaful_Overhead_'+now.getFullYear()+'.pdf');
 }
 
