@@ -1173,7 +1173,8 @@ function renderExpenses(){
   expenses.forEach(function(e){if(e.date&&e.date.length>=7)monthSet2[e.date.slice(0,7)]=true;});
   var allMonths=Object.keys(monthSet2).sort().reverse();
   // simple: use data-selected attribute to persist choice, default to curMo
-  var selPeriod=periodSel?periodSel.getAttribute('data-sel')||curMo:curMo;
+  var stored2=periodSel?periodSel.getAttribute('data-sel'):'';
+  var selPeriod=stored2&&(allMonths.indexOf(stored2)>-1||stored2==='all')?stored2:curMo;
   if(periodSel){
     var opts='<option value="all"'+(selPeriod==='all'?' selected':'')+'>All time</option>'+
       allMonths.map(function(m){
@@ -1182,19 +1183,32 @@ function renderExpenses(){
         return'<option value="'+m+'"'+(m===selPeriod?' selected':'')+'>'+label+'</option>';
       }).join('');
     periodSel.innerHTML=opts;
-    periodSel.value=selPeriod;
+    var found2=false;
+    for(var oi2=0;oi2<periodSel.options.length;oi2++){
+      if(periodSel.options[oi2].value===selPeriod){periodSel.options[oi2].selected=true;found2=true;break;}
+    }
+    if(!found2&&periodSel.options.length>1)periodSel.options[0].selected=true;
     selPeriod=periodSel.value||curMo;
     periodSel.setAttribute('data-sel',selPeriod);
   }
 
-  // filter expenses for selected period
-  var isAll=selPeriod==='all';
-  var periodExp=isAll?expenses:expenses.filter(function(e){return e.date.startsWith(selPeriod);});
+  // get filter bar values first
+  var fromF2=(document.getElementById('exp-from')||{}).value||'';
+  var toF2=(document.getElementById('exp-to')||{}).value||'';
+
+  // metric card period: use filter bar if set, else use viewing dropdown
+  var isAll=selPeriod==='all'&&!fromF2&&!toF2;
+  var periodExp=expenses.filter(function(e){
+    if(fromF2&&e.date.slice(0,7)<fromF2)return false;
+    if(toF2&&e.date.slice(0,7)>toF2)return false;
+    if(!fromF2&&!toF2&&selPeriod!=='all'&&!e.date.startsWith(selPeriod))return false;
+    return true;
+  });
   var periodTotal=periodExp.reduce(function(s,e){return s+Number(e.amount);},0);
   var periodDeduct=periodExp.filter(function(e){return e.deduct==='yes';}).reduce(function(s,e){return s+Number(e.amount);},0);
   var cm={};periodExp.forEach(function(e){cm[e.cat]=(cm[e.cat]||0)+Number(e.amount);});
   var top=Object.keys(cm).sort(function(a,b){return cm[b]-cm[a];})[0]||'—';
-  var periodLabel=isAll?'All time':new Date(selPeriod+'-01').toLocaleDateString('en-US',{month:'long',year:'numeric'});
+  var periodLabel=isAll?'All time':fromF2&&fromF2===toF2?new Date(fromF2+'-01').toLocaleDateString('en-US',{month:'long',year:'numeric'}):fromF2||toF2?'Custom range':selPeriod==='all'?'All time':new Date(selPeriod+'-01').toLocaleDateString('en-US',{month:'long',year:'numeric'});
 
   document.getElementById('exp-metrics').innerHTML=
     '<div class="metric-card accent"><div class="m-label">'+periodLabel+'</div><div class="m-val">'+fmtD(periodTotal)+'</div><div class="m-sub">expenses</div></div>'+
@@ -1287,7 +1301,9 @@ function renderBudget(){
   expenses.forEach(function(e){if(e.date&&e.date.length>=7)monthSet[e.date.slice(0,7)]=true;});
   var allMonths=Object.keys(monthSet).sort().reverse();
   // simple: use data-selected attribute to persist choice, default to curMo
-  var selPeriod=periodSel?periodSel.getAttribute('data-sel')||curMo:curMo;
+  // read stored selection, default to current month
+  var stored=periodSel?periodSel.getAttribute('data-sel'):'';
+  var selPeriod=stored&&allMonths.indexOf(stored)>-1||stored==='all'||stored==='year'?stored:curMo;
   if(periodSel){
     var opts='<option value="all"'+(selPeriod==='all'?' selected':'')+'>All time</option>'+
       '<option value="year"'+(selPeriod==='year'?' selected':'')+'>This year</option>'+
@@ -1297,7 +1313,17 @@ function renderBudget(){
         return'<option value="'+m+'"'+(m===selPeriod?' selected':'')+'>'+label+'</option>';
       }).join('');
     periodSel.innerHTML=opts;
-    periodSel.value=selPeriod;
+    // force set the value after rebuilding innerHTML
+    if(selPeriod==='all'||selPeriod==='year'){
+      periodSel.value=selPeriod;
+    } else {
+      // find and select the matching option directly
+      var found=false;
+      for(var oi=0;oi<periodSel.options.length;oi++){
+        if(periodSel.options[oi].value===selPeriod){periodSel.options[oi].selected=true;found=true;break;}
+      }
+      if(!found&&periodSel.options.length>2)periodSel.options[2].selected=true;
+    }
     selPeriod=periodSel.value||curMo;
     periodSel.setAttribute('data-sel',selPeriod);
   }
